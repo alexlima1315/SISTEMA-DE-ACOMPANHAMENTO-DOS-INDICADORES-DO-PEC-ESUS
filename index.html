@@ -733,12 +733,18 @@
         });
         return grouped.filter(function(person){return !state.filter||state.filter==='all'||person.findings.some(function(entry){return cvatCategory(entry.item.issue)===state.filter;});});
       }
+      function cvatParseDate(value){
+        var s=String(value||'').trim(),m;if(!s)return null;
+        if((m=s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/)))return new Date(Number(m[3]),Number(m[2])-1,Number(m[1]));
+        if((m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)))return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]));
+        var d=new Date(s);return isNaN(d.getTime())?null:d;
+      }
       function cvatPageRows(state){
         var people=cvatPeople(state),start=(state.page-1)*state.pageSize,view=people.slice(start,start+state.pageSize);
         return view.length?view.map(function(person){
           var d=person.details||{},seen=Object.create(null),selected=person.findings.filter(function(entry){return !state.filter||state.filter==='all'||cvatCategory(entry.item.issue)===state.filter;});
           var issues=selected.map(function(entry){var key=normalize(entry.item.issue);if(seen[key])return '';seen[key]=true;return '<li>'+escapeHtml(entry.item.issue)+'</li>';}).filter(Boolean).join('');
-          var birthDate=parseDate(d.dob),ageYears=null;if(birthDate){var today=new Date();ageYears=today.getFullYear()-birthDate.getFullYear();if(today.getMonth()<birthDate.getMonth()||(today.getMonth()===birthDate.getMonth()&&today.getDate()<birthDate.getDate()))ageYears--;}
+          var birthDate=cvatParseDate(d.dob),ageYears=null;if(birthDate){var today=new Date();ageYears=today.getFullYear()-birthDate.getFullYear();if(today.getMonth()<birthDate.getMonth()||(today.getMonth()===birthDate.getMonth()&&today.getDate()<birthDate.getDate()))ageYears--;}
           var personal=[ageYears==null?'':'Idade: '+ageYears+' anos',d.dob?'Nascimento: '+d.dob:'',d.phonePresent?'Telefone informado':'Telefone não localizado'].filter(Boolean).join(' · ');
           var identifiers='<span class="cvat-id-status '+(d.cpfPresent?'':'alert')+'">CPF '+(d.cpfPresent?'informado':'ausente')+'</span><br><span class="cvat-id-status '+(d.cnsNeedsCheck?'alert':'')+'">CNS '+(d.cnsPresent?(d.cnsNeedsCheck?'para conferência':'atual'):'não informado')+'</span>';
           var unit=d.unit||'Unidade não identificada no PDF';
