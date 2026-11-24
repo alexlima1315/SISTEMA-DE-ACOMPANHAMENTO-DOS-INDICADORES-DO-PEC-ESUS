@@ -743,8 +743,9 @@
           var identifiers='<span class="cvat-id-status '+(d.cpfPresent?'':'alert')+'">CPF '+(d.cpfPresent?'informado':'ausente')+'</span><br><span class="cvat-id-status '+(d.cnsNeedsCheck?'alert':'')+'">CNS '+(d.cnsPresent?(d.cnsNeedsCheck?'para conferência':'atual'):'não informado')+'</span>';
           var unit=[d.unit||'Unidade não identificada no PDF',d.microarea?'MA '+d.microarea:'MA não informada no PDF'].join(' · ');
           var period=d.monthsSince==null?'Data de atualização não identificada':d.monthsSince+' '+(d.monthsSince===1?'mês':'meses')+(d.updated?' · atualizado em '+d.updated:'');
+          var periodClass=d.monthsSince!=null&&d.monthsSince>12?'cvat-id-status alert':'';
           var correction='<strong>Conferir no PEC se alguma informação está ausente.</strong><br>Se estiver, atualizar o cadastro individual ou domiciliar correspondente.';
-          return '<tr><td><strong>'+escapeHtml(person.name)+'</strong><div class="cvat-person-meta">'+escapeHtml(personal)+'</div></td><td>'+identifiers+'</td><td>'+escapeHtml(unit)+'</td><td>'+escapeHtml(period)+'</td><td><ul class="cvat-person-issues">'+issues+'</ul><button type="button" class="file-trigger" data-cvat-action="'+start+'">Ação necessária</button><div class="notice" data-cvat-action-detail hidden>'+correction+'</div></td></tr>';
+          return '<tr><td><strong>'+escapeHtml(person.name)+'</strong><div class="cvat-person-meta">'+escapeHtml(personal)+'</div></td><td>'+identifiers+'</td><td>'+escapeHtml(unit)+'</td><td><span class="'+periodClass+'">'+escapeHtml(period)+'</span></td><td><ul class="cvat-person-issues">'+issues+'</ul><button type="button" class="file-trigger" data-cvat-action="'+start+'">Ação necessária</button><div class="notice" data-cvat-action-detail hidden>'+correction+'</div></td></tr>';
         }).join(''):'<tr><td colspan="5">Nenhum cadastro nesta categoria.</td></tr>';
       }
       function refreshCvatPagination(){
