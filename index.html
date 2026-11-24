@@ -162,6 +162,8 @@
     .cvat-pagination label { font-weight:700; }
     .cvat-pagination select { min-height:38px; padding:0 10px; border:1px solid var(--line); border-radius:9px; color:var(--ink); background:#fff; }
     .cvat-pagination [data-cvat-page-label] { color:var(--muted); margin:0 auto; }
+    .cvat-person-issues { margin:0; padding-left:18px; }
+    .cvat-person-issues li+li { margin-top:5px; }
     .cvat-pagination button:disabled { opacity:.45; cursor:not-allowed; }
     @media (max-width:600px) { .cvat-pagination { gap:7px; } .cvat-pagination [data-cvat-page-label] { order:5; width:100%; margin:0; text-align:center; } }
     table { width:100%; border-collapse:collapse; text-align:left; font-size:13px; }
@@ -717,22 +719,31 @@
         var counts={all:state.findings.length,cpf:0,cns:0,duplicate:0,link:0,stale:0,missing:0};
         state.findings.forEach(function(x){counts[cvatCategory(x.issue)]++;});return counts;
       }
+      function cvatPeople(state){
+        var grouped=[],lookup=Object.create(null);
+        state.findings.forEach(function(x,index){
+          var key=x.personKey||normalize(x.name),person=lookup[key];
+          if(!person){person={key:key,name:x.name,findings:[]};lookup[key]=person;grouped.push(person);}
+          person.findings.push({item:x,index:index});
+        });
+        return grouped.filter(function(person){return !state.filter||state.filter==='all'||person.findings.some(function(entry){return cvatCategory(entry.item.issue)===state.filter;});});
+      }
       function cvatPageRows(state){
-        var rows=state.findings.filter(function(x){return !state.filter||state.filter==='all'||cvatCategory(x.issue)===state.filter;});
-        var pages=Math.max(1,Math.ceil(rows.length/state.pageSize)),start=(state.page-1)*state.pageSize;
-        var view=rows.slice(start,start+state.pageSize);
-        return view.length?view.map(function(x){var i=state.findings.indexOf(x);return '<tr><td>'+escapeHtml(x.name)+'</td><td>'+escapeHtml(x.issue)+'</td><td><button type="button" class="file-trigger" data-cvat-action="'+i+'">Ação necessária</button><div class="notice" data-cvat-action-detail hidden>'+escapeHtml(cvatCorrectionFor(x))+'</div></td></tr>';}).join(''):'<tr><td colspan="3">Nenhuma observação nesta categoria.</td></tr>';
+        var people=cvatPeople(state),start=(state.page-1)*state.pageSize,view=people.slice(start,start+state.pageSize);
+        return view.length?view.map(function(person){
+          var seen=Object.create(null),issues=person.findings.map(function(entry){var key=normalize(entry.item.issue);if(seen[key])return '';seen[key]=true;return '<li>'+escapeHtml(entry.item.issue)+'</li>';}).filter(Boolean).join('');
+          var correction='<strong>Conferir no PEC se alguma informação está ausente.</strong><br>Se estiver, atualizar o cadastro individual ou domiciliar correspondente.';
+          return '<tr><td>'+escapeHtml(person.name)+'</td><td><ul class="cvat-person-issues">'+issues+'</ul></td><td><button type="button" class="file-trigger" data-cvat-action="'+start+'">Ação necessária</button><div class="notice" data-cvat-action-detail hidden>'+correction+'</div></td></tr>';
+        }).join(''):'<tr><td colspan="3">Nenhum cadastro nesta categoria.</td></tr>';
       }
       function refreshCvatPagination(){
         if(!cvatReviewState)return;
-        var state=cvatReviewState,counts=cvatCounts(state);
-        var filtered=state.findings.filter(function(x){return !state.filter||state.filter==='all'||cvatCategory(x.issue)===state.filter;});
-        var pages=Math.max(1,Math.ceil(filtered.length/state.pageSize));
+        var state=cvatReviewState,people=cvatPeople(state),pages=Math.max(1,Math.ceil(people.length/state.pageSize));
         state.page=Math.max(1,Math.min(state.page,pages));
         var body=results.querySelector('[data-cvat-findings]');
         if(body)body.innerHTML=cvatPageRows(state);
         var label=results.querySelector('[data-cvat-page-label]');
-        if(label)label.textContent='Página '+state.page+' de '+pages+' · '+filtered.length+' observações';
+        if(label)label.textContent='Página '+state.page+' de '+pages+' · '+people.length+' cadastros';
         var prev=results.querySelector('[data-cvat-prev]'),next=results.querySelector('[data-cvat-next]');
         if(prev)prev.disabled=state.page<=1;if(next)next.disabled=state.page>=pages;
       }
@@ -766,7 +777,7 @@
         var linkIx=col(['INE RESPONSAVEL','INE DA EQUIPE','EQUIPE RESPONSAVEL','EQUIPE DE REFERENCIA','UNIDADE DE SAUDE','UBS DE REFERENCIA','UNIDADE RESPONSAVEL','INE']);
         var targetMatch=String(teamValue||'').match(/\\b\\d{7,10}\\b/), targetIne=targetMatch?targetMatch[0].replace(/^0+/,''):'';
         var findings=[],dupGroups={};
-        function add(p,issue,detail){findings.push({name:String(p[nameIx]||'').trim(),issue:issue,detail:detail});}
+        function add(p,issue,detail){var name=String(p[nameIx]||'').trim(),id=cpfDigits||cns||'',birth=dobIx>=0?normalize(p[dobIx]):'';findings.push({personKey:id?'id:'+id:'name:'+normalize(name)+'|'+birth,name:name,issue:issue,detail:detail});}
         people.forEach(function(p){
           var cpf=cpfIx>=0?String(p[cpfIx]||'').trim():'';
           var cpfDigits=digits(cpf),cns=cnsIx>=0?digits(p[cnsIx]):'';
@@ -790,8 +801,8 @@
         var counts=cvatCounts(cvatReviewState);
         var categories=[['cpf','CPF ausente/inconsistente'],['cns','CNS para conferência'],['duplicate','Possíveis duplicidades'],['link','Vínculo UBS/equipe'],['stale','Cadastro desatualizado'],['missing','Outros dados faltantes']].filter(function(x){return counts[x[0]]>0;});
         var options='<option value="" selected>Filtrar por tipo (lista completa inicialmente)</option>'+categories.map(function(x){return '<option value="'+x[0]+'">'+escapeHtml(x[1])+' ('+counts[x[0]]+')</option>';}).join('');
-        var pages=Math.max(1,Math.ceil(findings.length/cvatReviewState.pageSize));
-        var pageLabel='Página 1 de '+pages+' · '+findings.length+' observações';
+        var groupedPeople=cvatPeople(cvatReviewState),pages=Math.max(1,Math.ceil(groupedPeople.length/cvatReviewState.pageSize));
+        var pageLabel='Página 1 de '+pages+' · '+groupedPeople.length+' cadastros';
         var linkNote=linkIx<0?'<div class="notice"><strong>Vínculo nominal:</strong> este CSV não contém coluna de UBS/INE por pessoa. O relatório agregado identifica a equipe, mas não permite apontar quem está sem vínculo. Exporte uma lista nominal com equipe/unidade responsável.</div>':'';
         var fieldsNote=[cpfIx<0?'CPF':null,cnsIx<0?'CNS':null,dobIx<0?'data de nascimento':null,phoneIx<0?'telefone celular':null,motherIx<0?'nome da mãe':null,indDateIx<0?'data de atualização individual':null,homeDateIx<0?'data de atualização domiciliar/territorial':null,linkIx<0?'UBS/INE individual':null].filter(Boolean);
         var missingNote=fieldsNote.length?'<div class="notice"><strong>Colunas não incluídas no arquivo:</strong> '+escapeHtml(fieldsNote.join(', '))+'. Não é possível verificar esses itens com este CSV.</div>':'';
