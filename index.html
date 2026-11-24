@@ -114,6 +114,8 @@
     .benefit-row:nth-child(3) .benefit-icon { color:var(--green); background:var(--green-soft); }
     .benefit-icon svg { width:22px; height:22px; }
     .benefit-note { margin:30px 0 0; text-align:center; font-weight:750; }
+    .file-pair { display:grid; grid-template-columns:auto 1fr; align-items:center; justify-content:center; gap:10px 14px; max-width:560px; margin:0 auto; text-align:left; }
+    .file-name { color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
     .indicator-picker { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin:18px 0; text-align:left; }
     .indicator-choice { min-height:42px; padding:9px 12px; border:1px solid var(--line); border-radius:11px; color:var(--ink); background:#fff; font-size:12px; font-weight:700; text-align:left; cursor:pointer; }
     .indicator-choice:hover,.indicator-choice.active { border-color:var(--blue); color:var(--blue-dark); background:var(--blue-soft); }
@@ -125,7 +127,7 @@
     .catalog-state { display:inline-block; padding:5px 8px; border-radius:99px; color:var(--green); background:var(--green-soft); font-size:10px; font-weight:800; }
     .catalog-state.pending { color:#775b19; background:#fff5db; }
     @media (max-width:850px) { .indicator-picker { grid-template-columns:repeat(2,1fr); } .catalog-grid { grid-template-columns:repeat(2,1fr); } }
-    @media (max-width:600px) { .indicator-picker { grid-template-columns:1fr; } .catalog-grid { grid-template-columns:1fr; } .catalog-card p { min-height:0; } }
+    @media (max-width:600px) { .file-pair { grid-template-columns:1fr; text-align:center; } .indicator-picker { grid-template-columns:1fr; } .catalog-grid { grid-template-columns:1fr; } .catalog-card p { min-height:0; } }
     .panel-shell { overflow:hidden; border:1px solid var(--line); border-radius:22px; background:#fff; box-shadow:var(--shadow); }
     .panel-head { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; padding:25px 27px; border-bottom:1px solid var(--line); }
     .panel-head h2 { font-size:25px; }
@@ -343,11 +345,17 @@
               <button type="button" class="indicator-choice" data-indicator="M2">M2 · Indicador eMulti</button>
             </div>
             <div id="selected-indicator-label" class="upload-hint">Nenhum indicador selecionado</div>
-            <h3 style="margin-top:22px">2. Envie os dois arquivos CSV</h3>
-            <p>Um arquivo do SIAPS e outro do PEC, referentes à mesma equipe e período.</p>
-            <label class="file-trigger" for="file-input">Escolher os 2 arquivos CSV</label>
-            <input id="file-input" type="file" accept=".csv,text/csv" aria-label="Selecionar os CSVs do SIAPS e do PEC" multiple>
-            <div class="upload-hint">Leitura local no navegador. Não envie planilhas com dados pessoais ao GitHub.</div>
+            <h3 style="margin-top:22px">2. Selecione cada relatório</h3>
+            <p>Os botões identificam a origem e aceitam os arquivos em qualquer ordem.</p>
+            <div class="file-pair">
+              <label class="file-trigger" for="siaps-input">Selecionar CSV do SIAPS</label>
+              <input id="siaps-input" type="file" accept=".csv,text/csv" aria-label="Selecionar arquivo CSV do SIAPS">
+              <span id="siaps-file-name" class="file-name">Nenhum arquivo escolhido</span>
+              <label class="file-trigger" for="pec-input">Selecionar CSV do PEC</label>
+              <input id="pec-input" type="file" accept=".csv,text/csv" aria-label="Selecionar arquivo CSV do PEC">
+              <span id="pec-file-name" class="file-name">Nenhum arquivo escolhido</span>
+            </div>
+            <div class="upload-hint">Leitura local neste navegador. Os arquivos não são enviados nem armazenados.</div></div>
           </div>
           <div id="message" class="message" role="status" aria-live="polite"></div>
           <div id="results" class="results"></div>
@@ -601,23 +609,32 @@
           throw new Error('Não reconheci este CSV. Confira se é a exportação “Visão por Equipe” do SIAPS para CVAT ou Cuidado na Gestação e Puerpério. C1–C7, B1–B6 e M1–M2 estão no catálogo; seus arquivos ainda precisam ser validados para leitura automática.');
         }
       }
-      function loadFiles(files) {
-        var list=Array.prototype.slice.call(files||[]);
-        if(list.length!==2||list.some(function(f){return !/\.csv$/i.test(f.name)&&f.type!=='text/csv';})){
-          setMessage('Selecione exatamente os dois CSVs: SIAPS “Visão por Competência” e PEC “Acompanhamento de Condições de Saúde”.','error');return;
+      var loadedReports = { siaps:'', pec:'' };
+      function readReport(file, type) {
+        if (!file) return;
+        if (!/\\.csv$/i.test(file.name) && file.type !== 'text/csv') {
+          setMessage('Selecione um arquivo CSV para '+(type==='siaps'?'SIAPS':'PEC')+'.','error');return;
         }
-        Promise.all(list.map(function(file){return new Promise(function(resolve,reject){
-          var reader=new FileReader();reader.onload=function(){try{var b=reader.result,t;
-            try{t=new TextDecoder('utf-8',{fatal:true}).decode(b);}catch(e){t=new TextDecoder('windows-1252').decode(b);}
-            resolve(t);}catch(e){reject(e);}};
-          reader.onerror=function(){reject(new Error('Não foi possível abrir um dos arquivos.'));};reader.readAsArrayBuffer(file);
-        });})).then(function(txt){
-          var si=txt.find(function(t){return normalize(t).indexOf('RELATORIO QUALIDADE - VISAO POR COMPETENCIA')>=0;});
-          var pe=txt.find(function(t){return normalize(t).indexOf('ACOMPANHAMENTO DE CONDICOES DE SAUDE')>=0;});
-          if(!si||!pe)throw new Error('Não identifiquei ambos os relatórios. Use o SIAPS “Relatório Qualidade - Visão por Competência” e o PEC “Acompanhamento de Condições de Saúde”.');
-          if(!selectedIndicator) throw new Error('Selecione um indicador antes de enviar os arquivos.');
-          if(selectedIndicator==='C3') renderC3Pair(si,pe); else renderGenericPair(si,pe,selectedIndicator);
-        }).catch(function(e){results.style.display='none';results.innerHTML='';setMessage(e.message||'Erro ao ler os arquivos.','error');});
+        var reader=new FileReader();
+        reader.onload=function(){
+          try {
+            var buffer=reader.result, decoded;
+            try { decoded=new TextDecoder('utf-8',{fatal:true}).decode(buffer); }
+            catch(e) { decoded=new TextDecoder('windows-1252').decode(buffer); }
+            loadedReports[type]=decoded;
+            document.getElementById(type+'-file-name').textContent=file.name;
+            results.style.display='none';results.innerHTML='';
+            if(!loadedReports.siaps||!loadedReports.pec){
+              setMessage('Arquivo '+(type==='siaps'?'SIAPS':'PEC')+' selecionado. Selecione o outro relatório para iniciar a análise.','info');
+              return;
+            }
+            if(!selectedIndicator) throw new Error('Escolha o indicador antes de analisar os relatórios.');
+            if(selectedIndicator==='C3') renderC3Pair(loadedReports.siaps,loadedReports.pec);
+            else renderGenericPair(loadedReports.siaps,loadedReports.pec,selectedIndicator);
+          } catch(e) { results.style.display='none';results.innerHTML='';setMessage(e.message||'Não foi possível ler os arquivos.','error'); }
+        };
+        reader.onerror=function(){setMessage('Não foi possível abrir o arquivo selecionado.','error');};
+        reader.readAsArrayBuffer(file);
       }
       document.getElementById('indicator-picker').addEventListener('click',function(event){
         var button=event.target.closest('[data-indicator]');if(!button)return;
@@ -625,10 +642,10 @@
         document.querySelectorAll('.indicator-choice').forEach(function(b){b.classList.toggle('active',b===button);});
         indicatorLabel.textContent='Selecionado: '+button.textContent+'. Agora envie os arquivos SIAPS e PEC.';
       });
-      input.addEventListener('change', function () { loadFiles(input.files); });
+      document.getElementById('siaps-input').addEventListener('change',function(){readReport(this.files&&this.files[0],'siaps');});\n      document.getElementById('pec-input').addEventListener('change',function(){readReport(this.files&&this.files[0],'pec');});
       area.addEventListener('dragover', function (event) { event.preventDefault(); area.classList.add('drag'); });
       area.addEventListener('dragleave', function () { area.classList.remove('drag'); });
-      area.addEventListener('drop', function (event) { event.preventDefault(); area.classList.remove('drag'); loadFiles(event.dataTransfer.files); });
+      area.addEventListener('drop', function (event) { event.preventDefault(); area.classList.remove('drag'); setMessage('Use os botões separados para escolher o CSV do SIAPS e o CSV do PEC.','info'); });
       results.addEventListener('click', function (event) {
         if (event.target && event.target.matches('[data-reset]')) {
           input.value = ''; results.innerHTML = ''; results.style.display = 'none';
