@@ -432,6 +432,8 @@
           var row=rows[i]||[];
           if (!predicate(normalize(row.join(' ')))) continue;
           for (var j=1;j<row.length;j++) if (String(row[j]||'').trim()!=='') return row[j];
+          var first=String(row[0]||'').trim(), colon=first.indexOf(':');
+          if(colon>=0&&first.slice(colon+1).trim()) return first.slice(colon+1).trim();
           return '';
         }
         return '';
@@ -499,7 +501,7 @@
           var missing = Math.max(0, denominator - p.achieved);
           return '<tr><td>' + escapeHtml(p.name) + '</td><td class="num">' + formatNumber(p.achieved) + ' de ' + formatNumber(denominator) + '</td><td class="num">' + formatNumber(rate, 1) + '%</td><td class="num">' + p.points + ' pontos por pessoa</td><td><span class="status">' + formatNumber(missing) + ' sem registro computado</span></td></tr>';
         }).join('');
-        results.innerHTML = '<div class="result-context">' + chip('Indicador', context.indicator || 'Cuidado na Gestação e Puerpério') + chip('Equipe', context.team) + chip('Competência', context.competence) + '</div>' +
+        results.innerHTML = '<div class="result-context">' + chip('Indicador', context.indicator || 'Cuidado na Gestação e Puerpério') + chip('Equipe', context.team||teamRef) + chip('Competência', context.competence) + '</div>' +
           '<div class="metrics"><div class="metric score"><span>Resultado médio</span><strong>' + formatNumber(score, 2) + '%</strong><span class="status">' + classificationC3(score) + '</span></div><div class="metric"><span>Numerador</span><strong>' + formatNumber(numerator) + '</strong><span>pontos de boas práticas</span></div><div class="metric"><span>Denominador</span><strong>' + formatNumber(denominator) + '</strong><span>gestantes e puérperas</span></div></div>' +
           '<div class="table-wrap"><table><thead><tr><th>Boa prática</th><th>Pessoas contabilizadas</th><th>Cobertura no denominador</th><th>Peso</th><th>Leitura do arquivo</th></tr></thead><tbody>' + rowsHtml + '</tbody></table></div>' +
           '<div class="notice"><strong>Conferência do cálculo:</strong> ' + (aligned ? 'o numerador confere com a soma das práticas e seus pesos.' : 'a soma das práticas não confere com o numerador informado; confira competência, atualização e versão da nota técnica.') + (reportedScore !== null && Math.abs(reportedScore - score) > 0.02 ? ' A razão do CSV também diverge do recálculo.' : '') + '<br><br><strong>Interpretação:</strong> “sem registro computado” é uma diferença agregada, não uma pendência individual confirmada. A prática pode depender da idade gestacional ou do período puerperal; valide a situação no prontuário antes de planejar busca ativa.</div>' +
@@ -507,7 +509,37 @@
         results.style.display = 'block';
         setMessage('Relatório C3 lido. A análise está somente nesta página e será apagada ao limpar ou fechar a aba.', 'info');
       }
-      function renderCvat(rows, context) {
+      function ineFromRows(rows) {
+        var found=[];
+        function add(v){var m=String(v||'').match(/\\b\\d{7,10}\\b/);if(m)found.push(m[0].replace(/^0+/,''));}
+        rows.forEach(function(r,i){
+          var cells=(r||[]).map(function(x){return String(x||'').trim();});
+          var heads=cells.map(normalize);
+          heads.forEach(function(h,j){
+            if(h==='INE'||h.indexOf('CODIGO INE')>=0||h.indexOf('INE DA EQUIPE')>=0||h.indexOf('INE RESPONSAVEL')>=0){
+              for(var k=j+1;k<cells.length;k++)add(cells[k]);
+              if(i+1<rows.length)add((rows[i+1]||[])[j]);
+            }
+            if(h.indexOf('INE')>=0)add(cells[j]);
+          });
+          if(cells.length===1&&normalize(cells[0]).indexOf('INE')>=0)add(cells[0]);
+        });
+        return found.find(function(v){return v.length>=7;})||'';
+      }
+      function renderCvatPair(siapsText,pecText) {
+        var sr=parseCsv(siapsText),pr=parseCsv(pecText);
+        var all=normalize(sr.map(function(r){return r.join(' ');}).join(' '));
+        var hasCvat=all.indexOf('PESSOAS SOMENTE COM CADASTRO INDIVIDUAL')>=0&&all.indexOf('TOTAL DE PESSOAS COM CADASTRO')>=0&&all.indexOf('PONTUACAO')>=0;
+        if(!hasCvat) throw new Error('O CSV do SIAPS selecionado não parece ser o relatório agregado do CVAT. Confira o arquivo e selecione novamente.');
+        var context=contextOf(sr);
+        var pecTeam=valueFor(pr,function(x){return x.indexOf('EQUIPE RESPONSAVEL')===0||x.indexOf('EQUIPE:')===0;});
+        var teamRef=pecTeam||context.team||'';
+        var ine=ineFromRows(pr)||ineFromRows(sr);
+        if(ine)teamRef+=' INE '+ine;
+        renderCvat(sr,context,pr,teamRef);
+      }
+
+      function renderCvat(rows, context, pecRows, teamRef) {
         var specs = [
           ['A', 'Pessoas somente com Cadastro Individual', 'PESSOAS SOMENTE COM CADASTRO INDIVIDUAL'],
           ['B', 'Cadastro Individual e Cadastro Domiciliar/Territorial', 'PESSOAS COM CADASTRO INDIVIDUAL E CADASTRO DOMICILIAR'],
@@ -525,13 +557,14 @@
         var score = numberValue(valueFor(rows, function (s) { return s === 'PONTUACAO'; }));
         if (data[2].value === null || data[7].value === null || score === null) throw new Error('Este CSV não contém as linhas esperadas do CVAT.');
         var items = data.map(function (item) { return '<tr><td><strong>' + item.key + '</strong></td><td>' + escapeHtml(item.label) + '</td><td class="num">' + (item.value === null ? '—' : formatNumber(item.value)) + '</td></tr>'; }).join('');
-        results.innerHTML = '<div class="result-context">' + chip('Componente', 'Vínculo e Acompanhamento Territorial') + chip('Equipe', context.team) + chip('Competência', context.competence) + '</div>' +
+        results.innerHTML = '<div class="result-context">' + chip('Componente', 'Vínculo e Acompanhamento Territorial') + chip('Equipe', context.team||teamRef) + chip('Competência', context.competence) + '</div>' +
           '<div class="metrics"><div class="metric score"><span>Pontuação do componente</span><strong>' + formatNumber(score, 2) + '</strong><span class="status ' + (score >= 7 ? 'good' : '') + '">' + classificationCvat(score) + '</span></div><div class="metric"><span>Pessoas com cadastro</span><strong>' + formatNumber(data[2].value) + '</strong><span>individual e/ou domiciliar</span></div><div class="metric"><span>Pessoas acompanhadas</span><strong>' + formatNumber(data[7].value) + '</strong><span>na competência informada</span></div></div>' +
           '<div class="table-wrap"><table><thead><tr><th>Variável</th><th>Descrição</th><th>Valor no arquivo</th></tr></thead><tbody>' + items + '</tbody></table></div>' +
-          '<div class="notice"><strong>Leitura responsável:</strong> este relatório é agregado por equipe. Ele permite conferir totais, mas não identifica quais pessoas precisam atualizar o cadastro ou receber visita. Para uma lista nominal, é necessário um arquivo individualizado compatível e um cruzamento seguro dos identificadores.</div>' +
+          '<div class="notice"><strong>Leitura responsável:</strong> as variáveis do SIAPS são agregadas por equipe. A lista abaixo usa o arquivo nominal do PEC e mostra a pessoa, o campo detectado e a correção sugerida.</div>' + (pecRows ? renderCvatReview(pecRows, teamRef||context.team, rows) : '') +
           '<div class="reset-row"><button class="text-button" type="button" data-reset>Limpar análise</button></div>';
         results.style.display = 'block';
-        setMessage('Relatório CVAT lido. Nenhum dado foi salvo ou enviado.', 'info');
+        resultsCache.CVAT=results.innerHTML;
+        setMessage('Relatórios CVAT + PEC lidos. Confira cada pessoa e a correção sugerida antes de atualizar o cadastro.', 'info');
       }
       function renderC3Pair(siapsText, pecText) {
         var sr=parseCsv(siapsText), pr=parseCsv(pecText);
@@ -662,15 +695,26 @@
           if(bd&&nm){var k='NOME_DATA:'+nm+'|'+bd.toISOString().slice(0,10);dupGroups[k]=dupGroups[k]||[];dupGroups[k].push(p);}
         });
         var duplicateRows=[];
-        Object.keys(dupGroups).forEach(function(k){var group=dupGroups[k];if(group.length>1){var kind=k.split(':')[0],names=group.map(function(p){return String(p[nameIx]||'').trim();});duplicateRows.push('<tr><td>'+escapeHtml(kind==='CPF'?'CPF repetido':kind==='CNS'?'CNS repetido':'Mesmo nome e nascimento')+'</td><td>'+escapeHtml(names.join(' · '))+'</td><td><span class="status">Possível duplicidade — confirmar</span></td></tr>');group.forEach(function(p){add(p,'Possível cadastro duplicado',kind==='CPF'?'CPF repetido na lista':kind==='CNS'?'CNS repetido na lista':'Nome e data de nascimento repetidos');});}});
-        var details=findings.map(function(x){return '<tr><td>'+escapeHtml(x.name)+'</td><td>'+escapeHtml(x.issue)+'</td><td>'+escapeHtml(x.detail)+'</td><td><span class="status">Conferir no PEC/CadSUS</span></td></tr>';}).join('');
+        Object.keys(dupGroups).forEach(function(k){var group=dupGroups[k];if(group.length>1){var kind=k.split(':')[0],names=group.map(function(p){return String(p[nameIx]||'').trim();});duplicateRows.push('<tr><td>'+escapeHtml(kind==='CPF'?'CPF repetido':kind==='CNS'?'CNS repetido':'Mesmo nome e nascimento')+'</td><td>'+escapeHtml(names.join(' · '))+'</td><td>Conferir os identificadores e regularizar o cadastro duplicado no PEC, se confirmado.</td><td><span class="status">Confirmar antes de corrigir</span></td></tr>');group.forEach(function(p){add(p,'Possível cadastro duplicado',kind==='CPF'?'CPF repetido na lista':kind==='CNS'?'CNS repetido na lista':'Nome e data de nascimento repetidos');});}});
+        function correctionFor(x){
+          var issue=normalize(x.issue);
+          if(issue.indexOf('CPF')>=0)return 'Conferir o documento e atualizar o CPF no cadastro individual; sincronizar/validar no CadSUS.';
+          if(issue.indexOf('CNS')>=0)return 'Consultar o CNS principal no CadSUS; corrigir o número no PEC após confirmação.';
+          if(issue.indexOf('DUPLICADO')>=0)return 'Conferir CPF/CNS e prontuário; confirmar se são a mesma pessoa e corrigir/regularizar duplicidade no PEC.';
+          if(issue.indexOf('VINCULO')>=0||issue.indexOf('UBS')>=0)return 'Conferir território e equipe responsável; vincular à UBS/equipe correta no cadastro individual.';
+          if(issue.indexOf('DOMICILIAR')>=0)return 'Atualizar o cadastro domiciliar e territorial, conferir domicílio, endereço, moradores e microárea.';
+          if(issue.indexOf('INDIVIDUAL')>=0||issue.indexOf('NASCIMENTO')>=0||issue.indexOf('MAE')>=0)return 'Revisar e atualizar os dados do cadastro individual no PEC.';
+          if(issue.indexOf('TELEFONE')>=0)return 'Confirmar com a pessoa e registrar telefone celular atualizado no cadastro.';
+          return 'Conferir o prontuário e corrigir o campo cadastral correspondente no PEC.';
+        }
+        var details=findings.map(function(x){return '<tr><td>'+escapeHtml(x.name)+'</td><td>'+escapeHtml(x.issue)+'</td><td>'+escapeHtml(x.detail)+'</td><td>'+escapeHtml(correctionFor(x))+'</td><td><span class="status">Conferir no PEC/CadSUS</span></td></tr>';}).join('');
         var linkNote=linkIx<0?'<div class="notice"><strong>Vínculo nominal:</strong> este CSV não contém coluna de UBS/INE por pessoa. O relatório agregado identifica a equipe, mas não permite apontar quem está sem vínculo. Exporte uma lista nominal com equipe/unidade responsável.</div>':'';
         var fieldsNote=[cpfIx<0?'CPF':null,cnsIx<0?'CNS':null,dobIx<0?'data de nascimento':null,phoneIx<0?'telefone celular':null,motherIx<0?'nome da mãe':null,indDateIx<0?'data de atualização individual':null,homeDateIx<0?'data de atualização domiciliar/territorial':null,linkIx<0?'UBS/INE individual':null].filter(Boolean);
         var missingNote=fieldsNote.length?'<div class="notice"><strong>Colunas não incluídas no arquivo:</strong> '+escapeHtml(fieldsNote.join(', '))+'. Não é possível verificar esses itens com este CSV.</div>':'';
         return '<h3>Revisão nominal do CVAT</h3><div class="metrics"><div class="metric"><span>Pessoas lidas no PEC</span><strong>'+formatNumber(people.length)+'</strong></div><div class="metric"><span>Itens para conferência</span><strong>'+formatNumber(findings.length)+'</strong></div><div class="metric"><span>Possíveis grupos duplicados</span><strong>'+formatNumber(duplicateRows.length)+'</strong></div></div>'+
           linkNote+missingNote+'<div class="notice"><strong>Referência da atualização:</strong> '+escapeHtml(refDate.toLocaleDateString('pt-BR'))+'. A Nota Técnica considera cadastro individual e domiciliar atualizados separadamente dentro dos últimos 24 meses. Se a competência não pôde ser lida do CSV, foi usada a data atual do navegador.</div>'+
-          '<h3>Cadastros que precisam de conferência</h3><div class="table-wrap"><table><thead><tr><th>Pessoa</th><th>Verificação</th><th>Valor/observação do arquivo</th><th>Ação</th></tr></thead><tbody>'+(details||'<tr><td colspan="4">Nenhum problema nos campos detectáveis foi encontrado. Isso não substitui a validação oficial do SIAPS.</td></tr>')+'</tbody></table></div>'+
-          '<h3 style="margin-top:20px">Possíveis duplicidades</h3><div class="table-wrap"><table><thead><tr><th>Chave repetida</th><th>Registros identificados</th><th>Status</th></tr></thead><tbody>'+(duplicateRows.join('')||'<tr><td colspan="3">Nenhuma duplicidade foi detectada pelos identificadores disponíveis.</td></tr>')+'</tbody></table></div>'+
+          '<h3>Cadastros que precisam de conferência</h3><div class="table-wrap"><table><thead><tr><th>Pessoa</th><th>Verificação</th><th>Valor/observação do arquivo</th><th>Correção necessária</th><th>Status</th></tr></thead><tbody>'+(details||'<tr><td colspan="5">Nenhum problema nos campos detectáveis foi encontrado. Isso não substitui a validação oficial do SIAPS.</td></tr>')+'</tbody></table></div>'+
+          '<h3 style="margin-top:20px">Possíveis duplicidades</h3><div class="table-wrap"><table><thead><tr><th>Chave repetida</th><th>Registros identificados</th><th>Correção necessária</th><th>Status</th></tr></thead><tbody>'+(duplicateRows.join('')||'<tr><td colspan="4">Nenhuma duplicidade foi detectada pelos identificadores disponíveis.</td></tr>')+'</tbody></table></div>'+
           '<div class="notice"><strong>Base oficial:</strong> o CVAT considera pessoa cadastrada quando o cadastro individual atende à validação do SIAPS; cadastro completo exige também cadastro domiciliar/territorial válido. Cadastro rápido não pontua. Esta leitura local é uma triagem, não substitui validação nacional nem confirmação manual da equipe.</div>';
       }
 
@@ -748,6 +792,7 @@
             }
             if(!selectedIndicator) throw new Error('Escolha o indicador antes de analisar os relatórios.');
             if(selectedIndicator==='C3') renderC3Pair(loadedReports.siaps,loadedReports.pec);
+            else if(selectedIndicator==='CVAT') renderCvatPair(loadedReports.siaps,loadedReports.pec);
             else renderGenericPair(loadedReports.siaps,loadedReports.pec,selectedIndicator);
           } catch(e) { results.style.display='none';results.innerHTML='';setMessage(e.message||'Não foi possível ler os arquivos.','error'); }
         };
