@@ -530,7 +530,13 @@
         }
         var reader = new FileReader();
         reader.onload = function () {
-          try { analyze(String(reader.result || '')); }
+          try {
+            var buffer = reader.result;
+            var decoded;
+            try { decoded = new TextDecoder('utf-8', { fatal: true }).decode(buffer); }
+            catch (encodingError) { decoded = new TextDecoder('windows-1252').decode(buffer); }
+            analyze(decoded);
+          }
           catch (error) { results.style.display = 'none'; results.innerHTML = ''; setMessage(error.message || 'Não foi possível ler o relatório.', 'error'); }
         };
         reader.onerror = function () { setMessage('Não foi possível abrir o arquivo selecionado.', 'error'); };
