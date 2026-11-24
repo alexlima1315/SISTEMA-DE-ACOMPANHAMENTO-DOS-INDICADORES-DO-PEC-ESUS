@@ -322,16 +322,16 @@
       <div class="wrap">
         <div class="panel-shell">
           <div class="panel-head">
-            <div><div class="eyebrow">Análise de relatório</div><h2>Comece pelo CSV do SIAPS</h2><p>O catálogo cobre CVAT, C1–C7, B1–B6 e M1–M2. A leitura automática agregada está habilitada para CVAT e C3 nesta versão.</p></div>
+            <div><div class="eyebrow">Análise de relatório</div><h2>Compare SIAPS + PEC</h2><p>O catálogo cobre CVAT, C1–C7, B1–B6 e M1–M2. A leitura automática agregada está habilitada para CVAT e C3 nesta versão.</p></div>
             <span class="local-badge">Processamento local</span>
           </div>
           <div class="upload-area" id="drop-area">
             <span class="upload-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 15V3m0 0L8 7m4-4 4 4M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <h3>Selecione o relatório de visão por equipe</h3>
-            <p>O arquivo é lido no navegador e descartado ao fechar ou limpar a análise.</p>
-            <label class="file-trigger" for="file-input">Escolher arquivo CSV</label>
-            <input id="file-input" type="file" accept=".csv,text/csv" aria-label="Selecionar relatório CSV do SIAPS">
-            <div class="upload-hint">CSV SIAPS: CVAT e Gestação e Puerpério. Os demais módulos estão catalogados e aguardam validação dos respectivos arquivos.</div>
+            <h3>Selecione os dois relatórios da mesma equipe e competência</h3>
+            <p>CSV do SIAPS “Visão por Competência” e CSV do PEC “Acompanhamento de Condições de Saúde”.</p>
+            <label class="file-trigger" for="file-input">Escolher os 2 arquivos CSV</label>
+            <input id="file-input" type="file" accept=".csv,text/csv" aria-label="Selecionar os CSVs do SIAPS e do PEC" multiple>
+            <div class="upload-hint">O cruzamento pelo INE é feito somente neste navegador. Os arquivos não são enviados nem armazenados.</div>
           </div>
           <div id="message" class="message" role="status" aria-live="polite"></div>
           <div id="results" class="results"></div>
@@ -401,7 +401,10 @@
       }
       function valueFor(rows, predicate) {
         for (var i = 0; i < rows.length; i++) {
-          if (predicate(normalize(rows[i][0]))) return rows[i][1] || '';
+          var row=rows[i]||[];
+          if (!predicate(normalize(row.join(' ')))) continue;
+          for (var j=1;j<row.length;j++) if (String(row[j]||'').trim()!=='') return row[j];
+          return '';
         }
         return '';
       }
@@ -502,6 +505,45 @@
         results.style.display = 'block';
         setMessage('Relatório CVAT lido. Nenhum dado foi salvo ou enviado.', 'info');
       }
+      function renderC3Pair(siapsText, pecText) {
+        var sr=parseCsv(siapsText), pr=parseCsv(pecText);
+        var hi=sr.findIndex(function(r){var x=normalize(r.join(' '));return x.indexOf('CNES')>=0&&x.indexOf('SOMATORIO DAS BOAS PRATICAS')>=0&&x.indexOf('TOTAL DE GESTANTES')>=0;});
+        if(hi<0) throw new Error('Não encontrei a tabela SIAPS “Visão por Competência”.');
+        var h=sr[hi].map(normalize), ix=function(part){return h.findIndex(function(x){return x.indexOf(normalize(part))>=0;});};
+        var teamValue=valueFor(pr,function(x){return x.indexOf('EQUIPE RESPONSAVEL')===0;});
+        var found=String(teamValue).match(/\b\d{7,10}\b/), ine=found?found[0].replace(/^0+/,''):'';
+        var rows=sr.slice(hi+1).filter(function(r){return r.length>=h.length;});
+        var row=rows.find(function(r){return ine&&String(r[ix('INE')]||'').replace(/^0+/,'').trim()===ine;});
+        if(!row) throw new Error('O INE da equipe do PEC não foi encontrado no arquivo SIAPS. Selecione arquivos da mesma equipe.');
+        var num=numberValue(row[ix('SOMATORIO DAS BOAS PRATICAS')]), den=numberValue(row[ix('TOTAL DE GESTANTES')]);
+        var ph=pr.findIndex(function(r){var x=normalize(r.join(' '));return x.indexOf('NOME')>=0&&x.indexOf('DATA DE NASCIMENTO')>=0&&x.indexOf('QUANTIDADE DE ATENDIMENTOS NO PRE NATAL')>=0;});
+        if(ph<0) throw new Error('Não encontrei a tabela nominal do PEC “Acompanhamento de Condições de Saúde”.');
+        var phead=pr[ph].map(normalize), people=pr.slice(ph+1).filter(function(r){return r.length>=8&&r[0]&&normalize(r[0])!=='NOME';});
+        var ixp=function(fragment){return phead.findIndex(function(x){return x.indexOf(normalize(fragment))>=0;});};
+        var val=function(p,fragment){var i=ixp(fragment);return i<0?'':String(p[i]||'').trim();};
+        var qty=function(p,fragment){return numberValue(val(p,fragment))||0;};
+        var tests=[
+          {label:'1ª consulta até 12 semanas',field:'QUANTIDADE DE ATENDIMENTOS ATE 12 SEMANAS NO PRE NATAL',ok:function(p){return qty(p,this.field)>=1;}},
+          {label:'Pelo menos 7 consultas de pré-natal',field:'QUANTIDADE DE ATENDIMENTOS NO PRE NATAL',ok:function(p){return qty(p,this.field)>=7;}},
+          {label:'Pelo menos 7 aferições de pressão arterial',field:'QUANTIDADE DE MEDICOES DE PRESSAO ARTERIAL',ok:function(p){return qty(p,this.field)>=7;}},
+          {label:'Pelo menos 7 medições simultâneas de peso e altura',field:'QUANTIDADE DE MEDICOES SIMULTANEAS DE PESO E ALTURA',ok:function(p){return qty(p,this.field)>=7;}},
+          {label:'Pelo menos 3 visitas ACS/TACS no pré-natal',field:'QUANTIDADE DE VISITAS DOMICILIARES NO PRE NATAL',ok:function(p){return qty(p,this.field)>=3;}},
+          {label:'Registro de dTpa',field:'DTPA',ok:function(p){var v=normalize(val(p,this.field));return !!v&&v!=='-'&&v!=='NAO'&&v!=='N';}},
+          {label:'HIV, sífilis e hepatites B/C no 1º trimestre',field:'EXAME DE HIV NO PRIMEIRO TRIMESTRE',ok:function(p){return ['EXAME DE HIV NO PRIMEIRO TRIMESTRE','EXAME DE SIFILIS NO PRIMEIRO TRIMESTRE','EXAME DE HEPATITE B NO PRIMEIRO TRIMESTRE','EXAME DE HEPATITE C NO PRIMEIRO TRIMESTRE'].every(function(f){return normalize(val(p,f))==='SIM';});}},
+          {label:'HIV e sífilis no 3º trimestre',field:'EXAME DE HIV NO TERCEIRO TRIMESTRE',ok:function(p){return ['EXAME DE HIV NO TERCEIRO TRIMESTRE','EXAME DE SIFILIS NO TERCEIRO TRIMESTRE'].every(function(f){return normalize(val(p,f))==='SIM';});}},
+          {label:'Atividade de saúde bucal no pré-natal',field:'QUANTIDADE DE ATENDIMENTOS ODONTOLOGICOS NO PRE NATAL',ok:function(p){return qty(p,this.field)>=1;}}
+        ];
+        var pend=[];
+        people.forEach(function(p){tests.forEach(function(t){if(!t.ok(p))pend.push({name:p[0],practice:t.label,current:val(p,t.field)});});});
+        var summary=tests.map(function(t){var ok=people.filter(function(p){return t.ok(p);}).length;return '<tr><td>'+escapeHtml(t.label)+'</td><td class="num">'+formatNumber(ok)+' de '+formatNumber(people.length)+'</td><td class="num">'+formatNumber(people.length-ok)+'</td></tr>';}).join('');
+        var list=pend.length?pend.map(function(x){return '<tr><td>'+escapeHtml(x.name)+'</td><td>'+escapeHtml(x.practice)+'</td><td>'+escapeHtml(x.current||'sem valor no arquivo')+'</td><td><span class="status">Conferir no prontuário</span></td></tr>';}).join(''):'<tr><td colspan="4">Nenhum campo abaixo do critério foi encontrado.</td></tr>';
+        results.innerHTML='<div class="result-context">'+chip('Indicador','C3 · Gestação e Puerpério')+chip('Equipe',row[4]||row[1])+chip('INE',teamValue)+chip('Competência','SIAPS · Visão por Competência')+'</div>'+
+          '<div class="metrics"><div class="metric score"><span>Resultado SIAPS da equipe</span><strong>'+ (den?formatNumber(num/den,2)+'%':'—')+'</strong><span class="status">'+formatNumber(num)+' pontos / '+formatNumber(den)+' pessoas</span></div><div class="metric"><span>Registros nominais PEC</span><strong>'+formatNumber(people.length)+'</strong><span>linhas de pessoas no arquivo</span></div><div class="metric"><span>Campos para conferir</span><strong>'+formatNumber(pend.length)+'</strong><span>pessoa × prática</span></div></div>'+
+          '<h3>Resumo dos campos no PEC</h3><div class="table-wrap"><table><thead><tr><th>Prática</th><th>Com critério no PEC</th><th>A conferir</th></tr></thead><tbody>'+summary+'</tbody></table></div>'+
+          '<h3 style="margin-top:22px">Lista nominal para conferência</h3><div class="table-wrap"><table><thead><tr><th>Pessoa</th><th>Prática a conferir</th><th>Valor no PEC</th><th>Próximo passo</th></tr></thead><tbody>'+list+'</tbody></table></div>'+
+          '<div class="notice"><strong>Conferência necessária:</strong> o SIAPS é agregado por equipe; o PEC fornece campos nominais. Um campo abaixo do critério não confirma atraso nem elegibilidade. Considere trimestre, idade gestacional, puerpério e período da nota antes de agir. Dados permanecem neste navegador.</div><div class="reset-row"><button class="text-button" type="button" data-reset>Limpar análise</button></div>';
+        results.style.display='block';setMessage('Os dois relatórios foram lidos e associados pelo INE da equipe. Revise os campos no prontuário antes de qualquer busca ativa.','info');
+      }
       function analyze(text) {
         var rows = parseCsv(text);
         var all = normalize(rows.map(function (r) { return r.join(' '); }).join(' '));
@@ -522,30 +564,27 @@
           throw new Error('Não reconheci este CSV. Confira se é a exportação “Visão por Equipe” do SIAPS para CVAT ou Cuidado na Gestação e Puerpério. C1–C7, B1–B6 e M1–M2 estão no catálogo; seus arquivos ainda precisam ser validados para leitura automática.');
         }
       }
-      function loadFile(file) {
-        if (!file) return;
-        if (!/\.csv$/i.test(file.name) && file.type !== 'text/csv') {
-          setMessage('Esta versão aceita os relatórios CSV de visão por equipe do SIAPS. PDF e Excel não são processados neste painel.', 'error');
-          return;
+      function loadFiles(files) {
+        var list=Array.prototype.slice.call(files||[]);
+        if(list.length!==2||list.some(function(f){return !/\.csv$/i.test(f.name)&&f.type!=='text/csv';})){
+          setMessage('Selecione exatamente os dois CSVs: SIAPS “Visão por Competência” e PEC “Acompanhamento de Condições de Saúde”.','error');return;
         }
-        var reader = new FileReader();
-        reader.onload = function () {
-          try {
-            var buffer = reader.result;
-            var decoded;
-            try { decoded = new TextDecoder('utf-8', { fatal: true }).decode(buffer); }
-            catch (encodingError) { decoded = new TextDecoder('windows-1252').decode(buffer); }
-            analyze(decoded);
-          }
-          catch (error) { results.style.display = 'none'; results.innerHTML = ''; setMessage(error.message || 'Não foi possível ler o relatório.', 'error'); }
-        };
-        reader.onerror = function () { setMessage('Não foi possível abrir o arquivo selecionado.', 'error'); };
-        reader.readAsArrayBuffer(file);
+        Promise.all(list.map(function(file){return new Promise(function(resolve,reject){
+          var reader=new FileReader();reader.onload=function(){try{var b=reader.result,t;
+            try{t=new TextDecoder('utf-8',{fatal:true}).decode(b);}catch(e){t=new TextDecoder('windows-1252').decode(b);}
+            resolve(t);}catch(e){reject(e);}};
+          reader.onerror=function(){reject(new Error('Não foi possível abrir um dos arquivos.'));};reader.readAsArrayBuffer(file);
+        });})).then(function(txt){
+          var si=txt.find(function(t){return normalize(t).indexOf('RELATORIO QUALIDADE - VISAO POR COMPETENCIA')>=0;});
+          var pe=txt.find(function(t){return normalize(t).indexOf('ACOMPANHAMENTO DE CONDICOES DE SAUDE')>=0;});
+          if(!si||!pe)throw new Error('Não identifiquei ambos os relatórios. Use o SIAPS “Relatório Qualidade - Visão por Competência” e o PEC “Acompanhamento de Condições de Saúde”.');
+          renderC3Pair(si,pe);
+        }).catch(function(e){results.style.display='none';results.innerHTML='';setMessage(e.message||'Erro ao ler os arquivos.','error');});
       }
-      input.addEventListener('change', function () { loadFile(input.files && input.files[0]); });
+      input.addEventListener('change', function () { loadFiles(input.files); });
       area.addEventListener('dragover', function (event) { event.preventDefault(); area.classList.add('drag'); });
       area.addEventListener('dragleave', function () { area.classList.remove('drag'); });
-      area.addEventListener('drop', function (event) { event.preventDefault(); area.classList.remove('drag'); loadFile(event.dataTransfer.files[0]); });
+      area.addEventListener('drop', function (event) { event.preventDefault(); area.classList.remove('drag'); loadFiles(event.dataTransfer.files); });
       results.addEventListener('click', function (event) {
         if (event.target && event.target.matches('[data-reset]')) {
           input.value = ''; results.innerHTML = ''; results.style.display = 'none';
