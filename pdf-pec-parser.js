@@ -9,10 +9,13 @@ function normalizeText(value) {
 function csvCell(value) {
   return '"' + String(value == null ? '' : value).replace(/"/g, '""') + '"';
 }
-function dateIn(value) {
+function dateList(value) {
   const normalized = String(value || '').replace(/\s*([\/-])\s*/g, '$1');
-  const matches = normalized.match(/\b\d{1,2}[\/-]\d{1,2}[\/-]\d{4}\b/g);
-  return matches ? matches[matches.length - 1] : '';
+  return normalized.match(/\b\d{1,2}[\/-]\d{1,2}[\/-]\d{4}\b/g) || [];
+}
+function dateIn(value) {
+  const dates = dateList(value);
+  return dates.length ? dates[dates.length - 1] : '';
 }
 function transformPoint(viewport, itemTransform) {
   const a = viewport.transform, b = itemTransform;
@@ -99,13 +102,15 @@ export async function parsePecPdf(file, onProgress) {
       const endY = index + 1 < starts.length ? starts[index + 1].y : viewport.height - 38;
       const band = lines.filter(line => line.y >= start.y - 1 && line.y < endY - 1);
       const cells = { left: [], sex: [], age: [], dob: [], address: [], phone: [], updated: [] };
+      const colScale = viewport.width / 842;
+      const col = [190, 325, 395, 460, 680, 760].map(value => value * colScale);
       band.forEach(line => line.items.forEach(item => {
-        if (item.x < 190) cells.left.push(item.text);
-        else if (item.x < 325) cells.sex.push(item.text);
-        else if (item.x < 395) cells.age.push(item.text);
-        else if (item.x < 460) cells.dob.push(item.text);
-        else if (item.x < 680) cells.address.push(item.text);
-        else if (item.x < 760) cells.phone.push(item.text);
+        if (item.x < col[0]) cells.left.push(item.text);
+        else if (item.x < col[1]) cells.sex.push(item.text);
+        else if (item.x < col[2]) cells.age.push(item.text);
+        else if (item.x < col[3]) cells.dob.push(item.text);
+        else if (item.x < col[4]) cells.address.push(item.text);
+        else if (item.x < col[5]) cells.phone.push(item.text);
         else cells.updated.push(item.text);
       }));
       const leftText = cells.left.join(' ').replace(/\s+/g, ' ').trim();
@@ -114,7 +119,9 @@ export async function parsePecPdf(file, onProgress) {
       const cpf = leftText.match(/\bCPF\s*[:\-]?\s*([\d.\- ]{11,})/i);
       const cns = leftText.match(/\bCNS\s*[:\-]?\s*([\d.\- ]{11,})/i);
       const dob = dateIn(cells.dob.join(' '));
-      const updated = dateIn(cells.updated.join(' ')) || dateIn(rowText);
+      const rowDates = dateList(rowText);
+      const updateFromRow = rowDates.slice().reverse().find(date => date !== dob) || '';
+      const updated = dateIn(cells.updated.join(' ')) || updateFromRow;
       const phoneMatch = rowText.match(/(?:\(\d{2}\)|\b\d{2})\s*9?\d{4}[-.\s]?\d{4}\b/);
       const phone = cells.phone.join(' ').trim() || (phoneMatch ? phoneMatch[0].trim() : '');
       if (!name || !dob) return;
