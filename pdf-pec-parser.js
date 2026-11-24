@@ -81,12 +81,13 @@ export async function parsePecPdf(file, onProgress) {
       const header = normalizeText(line.text);
       return header.includes('CIDADAO') && header.includes('SEXO') && header.includes('ATUALIZACAO');
     });
-    if (headerIndex < 0) continue;
-
-    const headerY = lines[headerIndex].y;
+    // PEC normalmente imprime o cabeçalho da tabela só na primeira página.
+    // Nas páginas seguintes, reutilizamos as mesmas faixas de coluna e o início
+    // da área de dados após o bloco de filtros institucional.
+    const headerY = headerIndex >= 0 ? lines[headerIndex].y : 78;
     const starts = [];
     let lastStart = -999;
-    lines.slice(headerIndex + 1).forEach(line => {
+    lines.slice(headerIndex >= 0 ? headerIndex + 1 : 0).forEach(line => {
       if (line.y <= headerY + 4 || line.y > viewport.height - 42) return;
       const left = line.items.filter(item => item.x >= 5 && item.x < 190).map(item => item.text).join(' ').trim();
       if (!left || /^(CPF|CNS)\s*[:\-]/i.test(left) || normalizeText(left) === 'CIDADAO') return;
