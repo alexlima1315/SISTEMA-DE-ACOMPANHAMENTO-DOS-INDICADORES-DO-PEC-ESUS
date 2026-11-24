@@ -22,6 +22,7 @@
       --amber: #986300;
       --amber-soft: #fff5db;
       --red: #a63d4f;
+      --red-soft: #fff0f1;
       --shadow: 0 16px 42px rgba(35, 31, 69, .08);
       --radius: 20px;
     }
@@ -162,6 +163,8 @@
     .cvat-pagination label { font-weight:700; }
     .cvat-pagination select { min-height:38px; padding:0 10px; border:1px solid var(--line); border-radius:9px; color:var(--ink); background:#fff; }
     .cvat-pagination [data-cvat-page-label] { color:var(--muted); margin:0 auto; }
+    .cvat-id-status { display:inline-block; margin:2px 0; padding:2px 7px; border-radius:999px; color:var(--muted); background:#f1f5f7; font-size:11px; font-weight:700; }
+    .cvat-id-status.alert { color:#a32132; background:var(--red-soft); border:1px solid #f0b8c0; }
     .cvat-person-meta { margin-top:4px; color:var(--muted); font-size:11px; line-height:1.4; }
     .cvat-person-issues { margin:0 0 9px; padding-left:18px; }
     .cvat-person-issues li+li { margin-top:5px; }
@@ -737,7 +740,7 @@
           var issues=selected.map(function(entry){var key=normalize(entry.item.issue);if(seen[key])return '';seen[key]=true;return '<li>'+escapeHtml(entry.item.issue)+'</li>';}).filter(Boolean).join('');
           var birthDate=parseDate(d.dob),ageYears=null;if(birthDate){var today=new Date();ageYears=today.getFullYear()-birthDate.getFullYear();if(today.getMonth()<birthDate.getMonth()||(today.getMonth()===birthDate.getMonth()&&today.getDate()<birthDate.getDate()))ageYears--;}
           var personal=[ageYears==null?'':'Idade: '+ageYears+' anos',d.dob?'Nascimento: '+d.dob:'',d.phonePresent?'Telefone informado':'Telefone não localizado'].filter(Boolean).join(' · ');
-          var identifiers='CPF: '+(d.cpfPresent?'informado':'ausente')+'<br>CNS: '+(d.cnsPresent?(d.cnsNeedsCheck?'conferir':'informado'):'ausente');
+          var identifiers='<span class="cvat-id-status '+(d.cpfPresent?'':'alert')+'">CPF '+(d.cpfPresent?'informado':'ausente')+'</span><br><span class="cvat-id-status '+(d.cnsNeedsCheck?'alert':'')+'">CNS '+(d.cnsPresent?(d.cnsNeedsCheck?'para conferência':'atual'):'não informado')+'</span>';
           var unit=[d.unit||'Unidade não identificada no PDF',d.microarea?'MA '+d.microarea:'MA não informada no PDF'].join(' · ');
           var period=d.monthsSince==null?'Data de atualização não identificada':d.monthsSince+' '+(d.monthsSince===1?'mês':'meses')+(d.updated?' · atualizado em '+d.updated:'');
           var correction='<strong>Conferir no PEC se alguma informação está ausente.</strong><br>Se estiver, atualizar o cadastro individual ou domiciliar correspondente.';
@@ -800,7 +803,7 @@
           var cpfDigits=digits(cpf),cns=cnsIx>=0?digits(p[cnsIx]):'';
           
           if(cnsIx>=0&&cns&&(!/^7/.test(cns)||cns.length!==15))add(p,'CNS para conferência',cns.length!==15?'Quantidade de dígitos do CNS fora do padrão; conferir no CadSUS':!/^7/.test(cns)?'Possível CNS anterior; confirmar o CNS principal no CadSUS':'Conferir CNS no CadSUS');
-          if(!cpfDigits&&!cns)add(p,'CPF/CNS ausentes','Não foi encontrado CPF ou CNS nesta linha do arquivo; conferir o cadastro no PEC.');
+          if(!cpfDigits&&!cns)add(p,'CPF/CNS ausentes','Não foi encontrado CPF ou CNS nesta linha do arquivo; conferir o cadastro no PEC.');else if(!cpfDigits)add(p,'CPF ausente','CPF não identificado no arquivo; conferir no PEC e atualizar o cadastro se necessário.');
           if(dobIx>=0&&!String(p[dobIx]||'').trim())add(p,'Data de nascimento ausente','Conferir identificação do cidadão no cadastro');
           if(phoneIx>=0&&!digits(p[phoneIx]))add(p,'Telefone celular ausente','O guia de cadastro do e-SUS APS indica o celular como dado obrigatório');
           if(motherIx>=0&&!String(p[motherIx]||'').trim())add(p,'Nome da mãe ausente','Conferir identificação cadastral e as validações do SIAPS');
