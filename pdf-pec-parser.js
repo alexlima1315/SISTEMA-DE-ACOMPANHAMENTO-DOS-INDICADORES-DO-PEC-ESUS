@@ -90,6 +90,8 @@ export async function parsePecPdf(file, onProgress) {
     // da área de dados após o bloco de filtros institucional.
     const headerY = headerIndex >= 0 ? lines[headerIndex].y : 78;
     const starts = [];
+    const colScale = viewport.width / 842;
+    const col = [190, 325, 395, 460, 680].map(value => value * colScale).concat(viewport.width * 0.88);
     let lastStart = -999;
     lines.slice(headerIndex >= 0 ? headerIndex + 1 : 0).forEach(line => {
       if (line.y <= headerY + 4 || line.y > viewport.height - 42) return;
@@ -98,12 +100,26 @@ export async function parsePecPdf(file, onProgress) {
       if (line.y - lastStart > 19) { starts.push({ y: line.y, name: left }); lastStart = line.y; }
     });
 
+    const updateMarks = lines.reduce((marks, line) => {
+      if (line.y <= headerY + 4 || line.y > viewport.height - 42) return marks;
+      const text = line.items.filter(item => item.x >= col[5]).map(item => item.text).join(' ');
+      const date = dateIn(text);
+      if (date) marks.push({ y: line.y, date: date });
+      return marks;
+    }, []);
+    function nearbyUpdateDate(index) {
+      const startY = starts[index].y;
+      const lower = index > 0 ? (starts[index - 1].y + startY) / 2 : headerY + 4;
+      const upper = index + 1 < starts.length ? (startY + starts[index + 1].y) / 2 : viewport.height - 42;
+      const matches = updateMarks.filter(mark => mark.y > lower && mark.y < upper);
+      matches.sort((a, b) => Math.abs(a.y - startY) - Math.abs(b.y - startY));
+      return matches.length ? matches[0].date : '';
+    }
+
     starts.forEach((start, index) => {
       const endY = index + 1 < starts.length ? starts[index + 1].y : viewport.height - 38;
       const band = lines.filter(line => line.y >= start.y - 1 && line.y < endY - 1);
       const cells = { left: [], sex: [], age: [], dob: [], address: [], phone: [], updated: [] };
-      const colScale = viewport.width / 842;
-      const col = [190, 325, 395, 460, 680, 760].map(value => value * colScale);
       band.forEach(line => line.items.forEach(item => {
         if (item.x < col[0]) cells.left.push(item.text);
         else if (item.x < col[1]) cells.sex.push(item.text);
@@ -121,7 +137,7 @@ export async function parsePecPdf(file, onProgress) {
       const dob = dateIn(cells.dob.join(' '));
       const rowDates = dateList(rowText);
       const updateFromRow = rowDates.slice().reverse().find(date => date !== dob) || '';
-      const updated = dateIn(cells.updated.join(' ')) || updateFromRow;
+      const updated = dateIn(cells.updated.join(' ')) || nearbyUpdateDate(index) || updateFromRow;
       const phoneMatch = rowText.match(/(?:\(\d{2}\)|\b\d{2})\s*9?\d{4}[-.\s]?\d{4}\b/);
       const phone = cells.phone.join(' ').trim() || (phoneMatch ? phoneMatch[0].trim() : '');
       if (!name || !dob) return;
