@@ -540,7 +540,7 @@
         var context=contextOf(sr);
         var pecTeam=valueFor(pr,function(x){return x.indexOf('EQUIPE RESPONSAVEL')===0||x.indexOf('EQUIPE:')===0;});
         var teamRef=pecTeam||context.team||'';
-        var ine=ineFromRows(pr);
+        var ine=ineFromRows(pr)||(loadedReportMeta.pec&&loadedReportMeta.pec.ine)||'';
         if(ine)teamRef+=' INE '+ine;
         if(hasCvat){renderCvat(sr,context,pr,teamRef);return;}
         renderCvatCompetencePair(sr,pr,context,teamRef);
@@ -556,14 +556,14 @@
         var ineIx=headers.findIndex(function(x){return x==='INE'||x.indexOf('NU INE')>=0||x.indexOf('CODIGO INE')>=0;});
         var unitIx=headers.findIndex(function(x){return x.indexOf('EQUIPE')>=0||x.indexOf('UNIDADE')>=0||x.indexOf('ESTABELECIMENTO')>=0;});
         var rawRows=headerAt>=0?sr.slice(headerAt+1).filter(function(r){return r.length>=headers.length&&r.some(function(v){return String(v||'').trim();});}):[];
-        var targetIne=ineFromRows(pr),teamName=normalize(pecTeam||context.team||'');
+        var targetIne=ineFromRows(pr)||(loadedReportMeta.pec&&loadedReportMeta.pec.ine)||'',teamName=normalize(pecTeam||context.team||'');
         function rowIne(r){var m=String(ineIx>=0?r[ineIx]:'').match(/\\b\\d{7,10}\\b/);return m?m[0].replace(/^0+/,''):'';}
         var teamRow=null;
         if(targetIne&&ineIx>=0)teamRow=rawRows.find(function(r){return rowIne(r)===targetIne;})||null;
         if(!teamRow&&teamName&&unitIx>=0)teamRow=rawRows.find(function(r){return normalize(r[unitIx]||'').indexOf(teamName)>=0||teamName.indexOf(normalize(r[unitIx]||''))>=0;})||null;
         if(!teamRow&&rawRows.length===1)teamRow=rawRows[0];
         var displayUnit=teamRow&&unitIx>=0?String(teamRow[unitIx]||'').trim():context.team||pecTeam||'Equipe informada no arquivo PEC';
-        var displayIne=teamRow&&ineIx>=0?rowIne(teamRow):targetIne||ineFromRows(sr);
+        var displayIne=teamRow&&ineIx>=0?rowIne(teamRow):targetIne||ineFromRows(sr)||(loadedReportMeta.pec&&loadedReportMeta.pec.ine)||'';
         var summary=teamRow?headers.map(function(h,i){return {label:sr[headerAt][i]||('Coluna '+(i+1)),value:teamRow[i]};}).filter(function(x){return !/CPF|CNS/.test(normalize(x.label))&&String(x.value||'').trim()!=='';}).map(function(x){return '<tr><td>'+escapeHtml(x.label)+'</td><td>'+escapeHtml(x.value)+'</td></tr>';}).join(''):'';
         var noTeam=headerAt<0||!teamRow?'<div class="notice"><strong>Identificação da equipe:</strong> não encontrei uma linha de equipe associável por INE ou nome nos campos deste relatório. A análise nominal do PEC continuará; confira se os dois arquivos são da mesma unidade.</div>':'';
         results.innerHTML='<div class="result-context">'+chip('Unidade/Equipe',displayUnit)+chip('INE',displayIne)+chip('Competência',context.competence)+'</div>'+
@@ -863,7 +863,7 @@
       var pdfParserPromise=null,sheetjsPromise=null;
       var loadedReportMeta={siaps:null,pec:null};
       function pecPdfToCsv(file){
-        if(!pdfParserPromise)pdfParserPromise=import('./pdf-pec-parser.js');
+        if(!pdfParserPromise)pdfParserPromise=import('./pdf-pec-parser.js?v=633cfc13e8c4c28e9d4d17921205e4d021bafe12');
         return pdfParserPromise.then(function(parser){return parser.parsePecPdf(file,function(page,total){setMessage('Lendo página '+page+' de '+total+' do PDF do PEC…','info');});});
       }
       async function excelToCsv(file){
