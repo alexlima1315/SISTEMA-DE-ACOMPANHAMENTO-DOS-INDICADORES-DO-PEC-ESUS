@@ -359,11 +359,11 @@
               <label class="file-trigger" for="siaps-input">Selecionar CSV do SIAPS</label>
               <input id="siaps-input" type="file" accept=".csv,text/csv" aria-label="Selecionar arquivo CSV do SIAPS">
               <span id="siaps-file-name" class="file-name">Nenhum arquivo escolhido</span>
-              <label class="file-trigger" for="pec-input">Selecionar CSV do PEC</label>
-              <input id="pec-input" type="file" accept=".csv,text/csv" aria-label="Selecionar arquivo CSV do PEC">
+              <label class="file-trigger" for="pec-input">Selecionar PDF do PEC (CVAT)</label>
+              <input id="pec-input" type="file" accept=".pdf,application/pdf,.csv,text/csv" aria-label="Selecionar PDF do PEC para CVAT ou CSV para outros indicadores">
               <span id="pec-file-name" class="file-name">Nenhum arquivo escolhido</span>
             </div>
-            <div class="upload-hint">Leitura local neste navegador. Os arquivos não são enviados nem armazenados.</div></div>
+            <div class="upload-hint">SIAPS: CSV. PEC: PDF do relatório “Acompanhamento de cidadãos vinculados” para CVAT; CSV nos demais indicadores. Leitura local — os arquivos não são enviados nem armazenados.</div></div>
           </div>
           <div id="message" class="message" role="status" aria-live="polite"></div>
           <div id="results" class="results"></div>
@@ -720,7 +720,7 @@
         var rows=state.findings.filter(function(x){return state.filter==='all'||cvatCategory(x.issue)===state.filter;});
         var pages=Math.max(1,Math.ceil(rows.length/state.pageSize)),start=(state.page-1)*state.pageSize;
         var view=rows.slice(start,start+state.pageSize);
-        return view.length?view.map(function(x){return '<tr><td>'+escapeHtml(x.name)+'</td><td>'+escapeHtml(x.issue)+'</td><td>'+escapeHtml(x.detail)+'</td><td>'+escapeHtml(cvatCorrectionFor(x))+'</td></tr>';}).join(''):'<tr><td colspan="4">Nenhuma observação nesta categoria.</td></tr>';
+        return view.length?view.map(function(x){return '<tr><td>'+escapeHtml(x.name)+'</td><td>'+escapeHtml(x.issue)+'</td><td>'+escapeHtml(cvatCorrectionFor(x))+'</td></tr>';}).join(''):'<tr><td colspan="3">Nenhuma observação nesta categoria.</td></tr>';
       }
       function refreshCvatPagination(){
         if(!cvatReviewState)return;
@@ -758,9 +758,9 @@
         if(!refDate){var ym=refText.match(/(\\d{1,2})[\\/-](20\\d{2})/);if(ym)refDate=new Date(Number(ym[2]),Number(ym[1]),0);}
         if(!refDate){var yy=refText.match(/20\\d{2}/);if(yy)refDate=new Date(Number(yy[0]),11,31);}
         if(!refDate)refDate=new Date();
-        function older24(d){return d&&d<new Date(refDate.getFullYear(),refDate.getMonth()-24,refDate.getDate());}
+        function older12(d){return d&&d<new Date(refDate.getFullYear(),refDate.getMonth()-12,refDate.getDate());}
         var cpfIx=col(['CPF']),cnsIx=col(['CNS','CARTAO NACIONAL']),dobIx=col(['DATA DE NASCIMENTO','NASCIMENTO']),phoneIx=col(['TELEFONE CELULAR','CELULAR','TELEFONE']),motherIx=col(['NOME DA MAE','NOME MATERNO']);
-        var indDateIx=col(['ULTIMA ATUALIZACAO DO CADASTRO INDIVIDUAL','DATA DA ULTIMA ATUALIZACAO INDIVIDUAL','ATUALIZACAO CADASTRO INDIVIDUAL','DATA CADASTRO INDIVIDUAL','CADASTRO INDIVIDUAL ATUALIZADO','INDIVIDUAL ATUALIZADO']);
+        var indDateIx=col(['ULTIMA ATUALIZACAO DO CADASTRO INDIVIDUAL','DATA DA ULTIMA ATUALIZACAO INDIVIDUAL','ATUALIZACAO CADASTRO INDIVIDUAL','DATA CADASTRO INDIVIDUAL','CADASTRO INDIVIDUAL ATUALIZADO','INDIVIDUAL ATUALIZADO','ULTIMA ATUALIZACAO']);
         var homeDateIx=col(['ULTIMA ATUALIZACAO DO CADASTRO DOMICILIAR','DATA DA ULTIMA ATUALIZACAO DOMICILIAR','ATUALIZACAO CADASTRO DOMICILIAR','DATA CADASTRO DOMICILIAR','CADASTRO DOMICILIAR ATUALIZADO','DOMICILIAR ATUALIZADO']);
         var linkIx=col(['INE RESPONSAVEL','INE DA EQUIPE','EQUIPE RESPONSAVEL','EQUIPE DE REFERENCIA','UNIDADE DE SAUDE','UBS DE REFERENCIA','UNIDADE RESPONSAVEL','INE']);
         var targetMatch=String(teamValue||'').match(/\\b\\d{7,10}\\b/), targetIne=targetMatch?targetMatch[0].replace(/^0+/,''):'';
@@ -768,15 +768,15 @@
         function add(p,issue,detail){findings.push({name:String(p[nameIx]||'').trim(),issue:issue,detail:detail});}
         people.forEach(function(p){
           var cpf=cpfIx>=0?String(p[cpfIx]||'').trim():'';
-          if(cpfIx>=0){var cpfDigits=digits(cpf);if(!cpfDigits)add(p,'CPF ausente','CPF não informado no arquivo');else if(cpfDigits.length!==11||!validCpf(cpf))add(p,'CPF preenchido — conferir dígitos','O arquivo contém um CPF; conferir formatação e validar no CadSUS.');}
-          var cns=cnsIx>=0?digits(p[cnsIx]):'';
+          var cpfDigits=digits(cpf),cns=cnsIx>=0?digits(p[cnsIx]):'';
+          if(cpfDigits&&(cpfDigits.length!==11||!validCpf(cpf))){add(p,'CPF preenchido — conferir dígitos','O arquivo contém um CPF; conferir formatação e validar no CadSUS.');}
           if(cnsIx>=0&&cns&&(!/^7/.test(cns)||cns.length!==15))add(p,'CNS para conferência',cns.length!==15?'Quantidade de dígitos do CNS fora do padrão; conferir no CadSUS':!/^7/.test(cns)?'Possível CNS anterior; confirmar o CNS principal no CadSUS':'Conferir CNS no CadSUS');
-          if(cnsIx>=0&&!cns)add(p,'CNS ausente','CNS não informado no arquivo');
+          if(!cpfDigits&&!cns)add(p,'CPF/CNS ausentes','Não foi encontrado CPF ou CNS nesta linha do arquivo; conferir o cadastro no PEC.');
           if(dobIx>=0&&!String(p[dobIx]||'').trim())add(p,'Data de nascimento ausente','Conferir identificação do cidadão no cadastro');
           if(phoneIx>=0&&!digits(p[phoneIx]))add(p,'Telefone celular ausente','O guia de cadastro do e-SUS APS indica o celular como dado obrigatório');
           if(motherIx>=0&&!String(p[motherIx]||'').trim())add(p,'Nome da mãe ausente','Conferir identificação cadastral e as validações do SIAPS');
-          if(indDateIx>=0){var di=parseDate(p[indDateIx]);if(!di)add(p,'Data de atualização individual ausente/ilegível','Sem a data não é possível validar a janela de 24 meses');else if(older24(di))add(p,'Cadastro individual desatualizado (>24 meses)',String(p[indDateIx]));}
-          if(homeDateIx>=0){var dh=parseDate(p[homeDateIx]);if(!dh)add(p,'Data de atualização domiciliar ausente/ilegível','Sem a data não é possível validar a janela de 24 meses');else if(older24(dh))add(p,'Cadastro domiciliar/territorial desatualizado (>24 meses)',String(p[homeDateIx]));}
+          if(indDateIx>=0){var di=parseDate(p[indDateIx]);if(!di)add(p,'Data de atualização individual ausente/ilegível','Sem a data não é possível validar a janela de 24 meses');else if(older12(di))add(p,'Cadastro individual desatualizado (>12 meses) — atualizar com prioridade',String(p[indDateIx]));}
+          if(homeDateIx>=0){var dh=parseDate(p[homeDateIx]);if(!dh)add(p,'Data de atualização domiciliar ausente/ilegível','Sem a data não é possível validar a janela de 24 meses');else if(older12(dh))add(p,'Cadastro domiciliar/territorial desatualizado (>12 meses) — atualizar com prioridade',String(p[homeDateIx]));}
           if(linkIx>=0){var lv=String(p[linkIx]||'').trim(),lm=lv.match(/\\b\\d{7,10}\\b/),rowIne=lm?lm[0].replace(/^0+/,''):'';if(!lv||/SEM VINCULO|NAO VINCULADO|SEM UBS|NAO INFORMADO/.test(normalize(lv)))add(p,'Sem vínculo com UBS/equipe','Campo de equipe/unidade vazio ou marcado sem vínculo no CSV');else if(targetIne&&rowIne&&rowIne!==targetIne)add(p,'Vínculo divergente da equipe SIAPS','INE informado no PEC: '+rowIne+'; INE do SIAPS: '+targetIne);}
           if(cpfIx>=0){var cd=digits(cpf);if(cd.length>=11){dupGroups['CPF:'+cd]=(dupGroups['CPF:'+cd]||[]);dupGroups['CPF:'+cd].push(p);}}
           if(cnsIx>=0&&cns){dupGroups['CNS:'+cns]=(dupGroups['CNS:'+cns]||[]);dupGroups['CNS:'+cns].push(p);}
@@ -795,8 +795,8 @@
         var fieldsNote=[cpfIx<0?'CPF':null,cnsIx<0?'CNS':null,dobIx<0?'data de nascimento':null,phoneIx<0?'telefone celular':null,motherIx<0?'nome da mãe':null,indDateIx<0?'data de atualização individual':null,homeDateIx<0?'data de atualização domiciliar/territorial':null,linkIx<0?'UBS/INE individual':null].filter(Boolean);
         var missingNote=fieldsNote.length?'<div class="notice"><strong>Colunas não incluídas no arquivo:</strong> '+escapeHtml(fieldsNote.join(', '))+'. Não é possível verificar esses itens com este CSV.</div>':'';
         return '<h3>Revisão nominal do CVAT</h3><div class="metrics"><div class="metric"><span>Pessoas lidas no PEC</span><strong>'+formatNumber(people.length)+'</strong></div><div class="metric"><span>Itens para conferência</span><strong>'+formatNumber(findings.length)+'</strong></div><div class="metric"><span>Possíveis grupos duplicados</span><strong>'+formatNumber(duplicateRows.length)+'</strong></div></div>'+
-          linkNote+missingNote+'<div class="notice"><strong>Referência da atualização:</strong> '+escapeHtml(refDate.toLocaleDateString('pt-BR'))+'. A Nota Técnica considera cadastro individual e domiciliar atualizados separadamente dentro dos últimos 24 meses. Se a competência não pôde ser lida do CSV, foi usada a data atual do navegador.</div>'+
-          '<h3>Observações por pessoa</h3><div class="cvat-pagination"><label for="cvat-observation-filter">Filtrar observação</label><select id="cvat-observation-filter" data-cvat-filter>'+options+'</select><label for="cvat-page-size">Cadastros por página</label><select id="cvat-page-size" data-cvat-page-size><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option></select><button type="button" class="file-trigger" data-cvat-prev>Anterior</button><span data-cvat-page-label>'+pageLabel+'</span><button type="button" class="file-trigger" data-cvat-next>Próxima</button></div><div class="table-wrap"><table><thead><tr><th>Nome da pessoa</th><th>Inconsistência</th><th>Informação para conferência</th><th>Correção necessária</th></tr></thead><tbody data-cvat-findings>'+cvatPageRows(cvatReviewState)+'</tbody></table></div>'+
+          linkNote+missingNote+'<div class="notice"><strong>Referência da atualização:</strong> '+escapeHtml(refDate.toLocaleDateString('pt-BR'))+'. A análise considera atualizações individual e domiciliar separadamente; registros com mais de 12 meses são sinalizados para atualização prioritária. Se a competência não pôde ser lida do CSV, foi usada a data atual do navegador.</div>'+
+          '<h3>Observações por pessoa</h3><div class="cvat-pagination"><label for="cvat-observation-filter">Filtrar observação</label><select id="cvat-observation-filter" data-cvat-filter>'+options+'</select><label for="cvat-page-size">Cadastros por página</label><select id="cvat-page-size" data-cvat-page-size><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option></select><button type="button" class="file-trigger" data-cvat-prev>Anterior</button><span data-cvat-page-label>'+pageLabel+'</span><button type="button" class="file-trigger" data-cvat-next>Próxima</button></div><div class="table-wrap"><table><thead><tr><th>Nome da pessoa</th><th>Inconsistência</th><th>Correção necessária</th></tr></thead><tbody data-cvat-findings>'+cvatPageRows(cvatReviewState)+'</tbody></table></div>'+
           '<div class="notice"><strong>Base oficial:</strong> o CVAT considera pessoa cadastrada quando o cadastro individual atende à validação do SIAPS; cadastro completo exige também cadastro domiciliar/territorial válido. Cadastro rápido não pontua. Esta leitura local é uma triagem, não substitui validação nacional nem confirmação manual da equipe.</div>';
       }
 
@@ -854,32 +854,90 @@
       }
       var loadedReports = { siaps:'', pec:'' };
       var resultsCache = {};
-      function readReport(file, type) {
-        if (!file) return;
-        if (!/\.csv$/i.test(file.name) && file.type !== 'text/csv') {
-          setMessage('Selecione um arquivo CSV para '+(type==='siaps'?'SIAPS':'PEC')+'.','error');return;
+      var pdfjsPromise=null;
+      async function pecPdfToCsv(file) {
+        if(!pdfjsPromise)pdfjsPromise=import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs').then(function(pdfjs){
+          pdfjs.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+          return pdfjs;
+        });
+        var pdfjs=await pdfjsPromise;
+        var pdf=await pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
+        if(pdf.numPages>500)throw new Error('O PDF tem mais de 500 páginas. Divida o relatório e tente novamente.');
+        var records=[],team='',ine='';
+        function csvCell(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"';}
+        function dateIn(v){var m=String(v||'').match(/\b\d{1,2}[\/-]\d{1,2}[\/-]\d{4}\b/);return m?m[0]:'';}
+        for(var pageNo=1;pageNo<=pdf.numPages;pageNo++){
+          var page=await pdf.getPage(pageNo),viewport=page.getViewport({scale:1}),content=await page.getTextContent(),lines=[];
+          content.items.forEach(function(it){
+            var value=String(it.str||'').trim();if(!value)return;
+            var tr=pdfjs.Util.transform(viewport.transform,it.transform),x=tr[4],y=tr[5];
+            var line=lines.find(function(z){return Math.abs(z.y-y)<1.7;});
+            if(!line){line={y:y,items:[]};lines.push(line);}
+            line.items.push({x:x,text:value});
+          });
+          lines.forEach(function(l){l.items.sort(function(a,b){return a.x-b.x;});l.text=l.items.map(function(x){return x.text;}).join(' ').replace(/\s+/g,' ').trim();});
+          lines.sort(function(a,b){return a.y-b.y;});
+          var eqLine=lines.find(function(l){return /EQUIPE\s*:/i.test(l.text);});
+          if(!team&&eqLine){
+            var em=eqLine.text.match(/EQUIPE\s*:\s*(.+?)(?:\s*[|/]\s*(\d{7,10}))?$/i);
+            if(em){team=String(em[1]||'').trim();if(em[2])ine=em[2].replace(/^0+/,'');}
+            var im=eqLine.text.match(/\b\d{7,10}\b/);if(!ine&&im)ine=im[0].replace(/^0+/,'');
+          }
+          var headerAt=lines.findIndex(function(l){var h=normalize(l.text);return h.indexOf('CIDADAO')>=0&&h.indexOf('SEXO')>=0&&h.indexOf('ATUALIZACAO')>=0;});
+          if(headerAt<0)continue;
+          var headerY=lines[headerAt].y,starts=[],lastStart=-999;
+          lines.slice(headerAt+1).forEach(function(l){
+            if(l.y<=headerY+4||l.y>viewport.height-42)return;
+            var left=l.items.filter(function(i){return i.x>=5&&i.x<190;}).map(function(i){return i.text;}).join(' ').trim();
+            if(!left||/^(CPF|CNS)\s*[:\-]/i.test(left)||normalize(left)==='CIDADAO')return;
+            if(l.y-lastStart>19){starts.push({y:l.y,name:left});lastStart=l.y;}
+          });
+          starts.forEach(function(start,index){
+            var end=index+1<starts.length?starts[index+1].y:viewport.height-38;
+            var band=lines.filter(function(l){return l.y>=start.y-1&&l.y<end-1;});
+            var cells={left:[],sex:[],age:[],dob:[],address:[],phone:[],updated:[]};
+            band.forEach(function(l){l.items.forEach(function(it){
+              if(it.x<190)cells.left.push(it.text);
+              else if(it.x<325)cells.sex.push(it.text);
+              else if(it.x<395)cells.age.push(it.text);
+              else if(it.x<460)cells.dob.push(it.text);
+              else if(it.x<680)cells.address.push(it.text);
+              else if(it.x<760)cells.phone.push(it.text);
+              else cells.updated.push(it.text);
+            });});
+            var leftText=cells.left.join(' ').replace(/\s+/g,' ').trim(),name=String(start.name||'').replace(/\s+(CPF|CNS)\s*[:\-].*$/i,'').trim();
+            var cpfMatch=leftText.match(/\bCPF\s*[:\-]?\s*([\d.\- ]{11,})/i),cnsMatch=leftText.match(/\bCNS\s*[:\-]?\s*([\d.\- ]{11,})/i);
+            var dob=dateIn(cells.dob.join(' ')),updated=dateIn(cells.updated.join(' '));
+            if(!name||!dob) return;
+            records.push([name,cpfMatch?cpfMatch[1].trim():'',cnsMatch?cnsMatch[1].trim():'',dob,cells.sex.join(' ').trim(),cells.age.join(' ').trim(),cells.address.join(' ').trim(),cells.phone.join(' ').trim(),updated]);
+          });
         }
-        var reader=new FileReader();
-        reader.onload=function(){
-          try {
-            var buffer=reader.result, decoded;
-            try { decoded=new TextDecoder('utf-8',{fatal:true}).decode(buffer); }
-            catch(e) { decoded=new TextDecoder('windows-1252').decode(buffer); }
-            loadedReports[type]=decoded;
-            document.getElementById(type+'-file-name').textContent=file.name;
-            results.style.display='none';results.innerHTML='';
-            if(!loadedReports.siaps||!loadedReports.pec){
-              setMessage('Arquivo '+(type==='siaps'?'SIAPS':'PEC')+' selecionado. Selecione o outro relatório para iniciar a análise.','info');
-              return;
-            }
-            if(!selectedIndicator) throw new Error('Escolha o indicador antes de analisar os relatórios.');
-            if(selectedIndicator==='C3') renderC3Pair(loadedReports.siaps,loadedReports.pec);
-            else if(selectedIndicator==='CVAT') renderCvatPair(loadedReports.siaps,loadedReports.pec);
-            else renderGenericPair(loadedReports.siaps,loadedReports.pec,selectedIndicator);
-          } catch(e) { results.style.display='none';results.innerHTML='';setMessage(e.message||'Não foi possível ler os arquivos.','error'); }
-        };
-        reader.onerror=function(){setMessage('Não foi possível abrir o arquivo selecionado.','error');};
-        reader.readAsArrayBuffer(file);
+        if(!records.length)throw new Error('Não consegui localizar as linhas de cidadãos neste PDF. Use o relatório “Acompanhamento de cidadãos vinculados” exportado em PDF com texto selecionável.');
+        var output=[['EQUIPE RESPONSAVEL',team],['INE DA EQUIPE',ine],['NOME DO CIDADAO','CPF','CNS','DATA DE NASCIMENTO','SEXO','IDADE','ENDERECO','TELEFONE CELULAR','ULTIMA ATUALIZACAO']].concat(records);
+        return output.map(function(row){return row.map(csvCell).join(',');}).join('\n');
+      }
+      async function readReport(file, type) {
+        if(!file)return;
+        var isPdf=type==='pec'&&(/\.pdf$/i.test(file.name)||file.type==='application/pdf');
+        if(type==='siaps'&&(!/\.csv$/i.test(file.name)&&file.type!=='text/csv')){setMessage('O relatório do SIAPS deve ser enviado em CSV.','error');return;}
+        if(type==='pec'&&!isPdf&&!/\.csv$/i.test(file.name)&&file.type!=='text/csv'){setMessage('Para o CVAT, selecione o PDF “Acompanhamento de cidadãos vinculados”; para outros indicadores, selecione o CSV do PEC.','error');return;}
+        if(isPdf&&selectedIndicator!=='CVAT'){setMessage('Este modelo PDF do PEC é compatível com CVAT. Para os outros indicadores, selecione o CSV nominal correspondente.','error');return;}
+        try{
+          var decoded;
+          if(isPdf){setMessage('Lendo o PDF do PEC localmente neste navegador…','info');decoded=await pecPdfToCsv(file);}
+          else{
+            var buffer=await file.arrayBuffer();
+            try{decoded=new TextDecoder('utf-8',{fatal:true}).decode(buffer);}catch(e){decoded=new TextDecoder('windows-1252').decode(buffer);}
+          }
+          loadedReports[type]=decoded;
+          document.getElementById(type+'-file-name').textContent=file.name;
+          results.style.display='none';results.innerHTML='';
+          if(!loadedReports.siaps||!loadedReports.pec){setMessage('Arquivo '+(type==='siaps'?'SIAPS':'PEC')+' selecionado. Selecione o outro relatório para iniciar a análise.','info');return;}
+          if(!selectedIndicator)throw new Error('Escolha o indicador antes de analisar os relatórios.');
+          if(selectedIndicator==='C3')renderC3Pair(loadedReports.siaps,loadedReports.pec);
+          else if(selectedIndicator==='CVAT')renderCvatPair(loadedReports.siaps,loadedReports.pec);
+          else renderGenericPair(loadedReports.siaps,loadedReports.pec,selectedIndicator);
+        }catch(e){results.style.display='none';results.innerHTML='';setMessage(e.message||'Não foi possível ler os arquivos.','error');}
       }
       function openIndicatorFromCatalog(card) {
         var code=card.getAttribute('data-indicator');
