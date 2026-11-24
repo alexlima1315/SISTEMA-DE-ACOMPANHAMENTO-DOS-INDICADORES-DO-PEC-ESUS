@@ -366,7 +366,9 @@
       var input = document.getElementById('file-input');
       var area = document.getElementById('drop-area');
       var message = document.getElementById('message');
-      var results = document.getElementById('results');\n      var selectedIndicator = '';\n      var indicatorLabel = document.getElementById('selected-indicator-label');
+      var results = document.getElementById('results');
+      var selectedIndicator = '';
+      var indicatorLabel = document.getElementById('selected-indicator-label');
 
       function normalize(value) {
         return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[-–—_/()[\].,;:]+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -613,7 +615,8 @@
           var si=txt.find(function(t){return normalize(t).indexOf('RELATORIO QUALIDADE - VISAO POR COMPETENCIA')>=0;});
           var pe=txt.find(function(t){return normalize(t).indexOf('ACOMPANHAMENTO DE CONDICOES DE SAUDE')>=0;});
           if(!si||!pe)throw new Error('Não identifiquei ambos os relatórios. Use o SIAPS “Relatório Qualidade - Visão por Competência” e o PEC “Acompanhamento de Condições de Saúde”.');
-          if(!selectedIndicator) throw new Error('Selecione um indicador antes de enviar os arquivos.');\n          if(selectedIndicator==='C3') renderC3Pair(si,pe); else renderGenericPair(si,pe,selectedIndicator);
+          if(!selectedIndicator) throw new Error('Selecione um indicador antes de enviar os arquivos.');
+          if(selectedIndicator==='C3') renderC3Pair(si,pe); else renderGenericPair(si,pe,selectedIndicator);
         }).catch(function(e){results.style.display='none';results.innerHTML='';setMessage(e.message||'Erro ao ler os arquivos.','error');});
       }
       document.getElementById('indicator-picker').addEventListener('click',function(event){
