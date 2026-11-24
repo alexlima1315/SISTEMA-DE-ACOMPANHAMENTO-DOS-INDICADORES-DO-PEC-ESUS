@@ -536,13 +536,45 @@
         var sr=parseCsv(siapsText),pr=parseCsv(pecText);
         var all=normalize(sr.map(function(r){return r.join(' ');}).join(' '));
         var hasCvat=all.indexOf('PESSOAS SOMENTE COM CADASTRO INDIVIDUAL')>=0&&all.indexOf('TOTAL DE PESSOAS COM CADASTRO')>=0&&all.indexOf('PONTUACAO')>=0;
-        if(!hasCvat) throw new Error('O CSV do SIAPS selecionado não parece ser o relatório agregado do CVAT. Confira o arquivo e selecione novamente.');
         var context=contextOf(sr);
         var pecTeam=valueFor(pr,function(x){return x.indexOf('EQUIPE RESPONSAVEL')===0||x.indexOf('EQUIPE:')===0;});
         var teamRef=pecTeam||context.team||'';
-        var ine=ineFromRows(pr)||ineFromRows(sr);
+        var ine=ineFromRows(pr);
         if(ine)teamRef+=' INE '+ine;
-        renderCvat(sr,context,pr,teamRef);
+        if(hasCvat){renderCvat(sr,context,pr,teamRef);return;}
+        renderCvatCompetencePair(sr,pr,context,teamRef);
+      }
+      function renderCvatCompetencePair(sr,pr,context,teamRef) {
+        var headerAt=sr.findIndex(function(r){
+          var h=r.map(normalize);
+          return h.some(function(x){return x==='INE'||x.indexOf('NU INE')>=0||x.indexOf('CODIGO INE')>=0;})&&
+            h.some(function(x){return x.indexOf('EQUIPE')>=0||x.indexOf('UNIDADE')>=0||x.indexOf('ESTABELECIMENTO')>=0;});
+        });
+        var headers=headerAt>=0?sr[headerAt].map(normalize):[];
+        var ineIx=headers.findIndex(function(x){return x==='INE'||x.indexOf('NU INE')>=0||x.indexOf('CODIGO INE')>=0;});
+        var unitIx=headers.findIndex(function(x){return x.indexOf('EQUIPE')>=0||x.indexOf('UNIDADE')>=0||x.indexOf('ESTABELECIMENTO')>=0;});
+        var rawRows=headerAt>=0?sr.slice(headerAt+1).filter(function(r){return r.length>=headers.length&&r.some(function(v){return String(v||'').trim();});}):[];
+        var targetIne=ineFromRows(pr),teamName=normalize(pecTeam||context.team||'');
+        function rowIne(r){var m=String(ineIx>=0?r[ineIx]:'').match(/\\b\\d{7,10}\\b/);return m?m[0].replace(/^0+/,''):'';}
+        var teamRow=null;
+        if(targetIne&&ineIx>=0)teamRow=rawRows.find(function(r){return rowIne(r)===targetIne;})||null;
+        if(!teamRow&&teamName&&unitIx>=0)teamRow=rawRows.find(function(r){return normalize(r[unitIx]||'').indexOf(teamName)>=0||teamName.indexOf(normalize(r[unitIx]||''))>=0;})||null;
+        if(!teamRow&&rawRows.length===1)teamRow=rawRows[0];
+        var displayUnit=teamRow&&unitIx>=0?String(teamRow[unitIx]||'').trim():context.team||pecTeam||'Equipe informada no arquivo PEC';
+        var displayIne=teamRow&&ineIx>=0?rowIne(teamRow):targetIne||ineFromRows(sr);
+        var summary=teamRow?headers.map(function(h,i){return {label:sr[headerAt][i]||('Coluna '+(i+1)),value:teamRow[i]};}).filter(function(x){return !/CPF|CNS/.test(normalize(x.label))&&String(x.value||'').trim()!=='';}).map(function(x){return '<tr><td>'+escapeHtml(x.label)+'</td><td>'+escapeHtml(x.value)+'</td></tr>';}).join(''):'';
+        var noTeam=headerAt<0||!teamRow?'<div class="notice"><strong>Identificação da equipe:</strong> não encontrei uma linha de equipe associável por INE ou nome nos campos deste relatório. A análise nominal do PEC continuará; confira se os dois arquivos são da mesma unidade.</div>':'';
+        results.innerHTML='<div class="result-context">'+chip('Unidade/Equipe',displayUnit)+chip('INE',displayIne)+chip('Competência',context.competence)+'</div>'+
+          '<div class="metrics"><div class="metric"><span>Linhas do CSV PEC</span><strong>'+formatNumber(pr.length)+'</strong><span>arquivo selecionado</span></div><div class="metric"><span>Equipe associada</span><strong>'+(teamRow?'Sim':'Conferir')+'</strong><span>vínculo pelo INE/nome quando presente</span></div><div class="metric"><span>Tipo de relatório SIAPS</span><strong>Visão por competência</strong><span>campos encontrados abaixo</span></div></div>'+
+          (summary?'<h3>Dados da equipe no SIAPS</h3><div class="table-wrap"><table><thead><tr><th>Campo do relatório</th><th>Valor</th></tr></thead><tbody>'+summary+'</tbody></table></div>':'')+
+          noTeam+'<div class="notice"><strong>Lista nominal:</strong> as observações abaixo vêm das pessoas e colunas presentes no CSV do PEC; CPF/CNS não são exibidos.</div>'+
+          renderCvatReview(pr,teamRef,sr)+
+          '<div class="notice"><strong>Nota:</strong> este arquivo do SIAPS não contém o resumo agregado A–K do CVAT. O sistema mantém a leitura nominal e exibe os dados da equipe disponíveis no relatório por competência.</div>'+
+          '<div class="reset-row"><button class="text-button" type="button" data-reset>Limpar análise</button></div>';
+        results.style.display='block';
+        refreshCvatPagination();
+        resultsCache.CVAT=results.innerHTML;
+        setMessage('Relatórios CVAT + PEC lidos. A equipe foi identificada quando havia INE/nome compatível; confira as observações nominais por página.','info');
       }
 
       function renderCvat(rows, context, pecRows, teamRef) {
@@ -704,6 +736,7 @@
       }
 
       function renderCvatReview(pecRows, teamValue, siapsRows) {
+        cvatReviewState=null;
         var headerAt=pecRows.findIndex(function(r){var x=r.map(normalize);return x.some(function(v){return v.indexOf('NOME')>=0||v==='PESSOA'||v==='CIDADAO'||v==='USUARIO';})&&(x.some(function(v){return v.indexOf('DATA DE NASCIMENTO')>=0;})||x.some(function(v){return v.indexOf('CPF')>=0;})||x.some(function(v){return v.indexOf('CNS')>=0;}));});
         if(headerAt<0)return '<div class="notice"><strong>Lista nominal CVAT:</strong> o arquivo do PEC não contém cabeçalho de pessoas com campos de identificação. Envie a exportação nominal de cadastro/território para conferir vínculo, atualização e duplicidades.</div>';
         var headers=pecRows[headerAt].map(normalize);
