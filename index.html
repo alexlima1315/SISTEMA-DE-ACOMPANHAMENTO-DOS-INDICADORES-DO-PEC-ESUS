@@ -926,7 +926,6 @@
         var label=selectedIndicator||'Selecione um indicador';results.innerHTML='<div class="result-context">'+chip('Indicador',label)+chip('Arquivo lido',type==='siaps'?'SIAPS':'PEC')+'</div><div class="metrics"><div class="metric"><span>Registros localizados</span><strong>'+formatNumber(meta.records||stats.rows)+'</strong><span>no arquivo selecionado</span></div><div class="metric"><span>Colunas reconhecidas</span><strong>'+formatNumber((meta.columns||stats.columns).length)+'</strong><span>sem exibir identificadores</span></div><div class="metric"><span>Tipo de arquivo</span><strong>'+escapeHtml(meta.pages?'PDF · '+meta.pages+' páginas':type==='siaps'?'SIAPS':'PEC')+'</strong><span>processamento local</span></div></div>'+renderMethodCard(selectedIndicator)+'<div class="notice"><strong>Resultado parcial:</strong> este relatório foi lido sozinho. Envie o outro arquivo para cruzar equipe, competência e registros nominais; não calcularei uma pontuação oficial sem os campos correspondentes.</div>'+((type==='pec'&&selectedIndicator)?renderNominalReview(selectedIndicator,rows[meta.headerAt||0]?rows[meta.headerAt||0].map(normalize):null,rows.slice((meta.headerAt||0)+1)): '')+'<div class="reset-row"><button class="text-button" type="button" data-reset>Limpar análise</button></div>';
         results.style.display='block';resultsCache[selectedIndicator||'import']=results.innerHTML;setMessage('Arquivo lido. '+stats.rows+' registros e '+stats.columns.length+' colunas reconhecidos.','info');
       }
-      var loadedReports={siaps:'',pec:''},resultsCache=resultsCache||{};
       function updateFileStatus(type,file,text,meta){
         var box=document.getElementById('file-status');if(!box)return;
         var stats=reportStats(text),who=type==='siaps'?'SIAPS':'PEC';
@@ -978,7 +977,13 @@
         var button=event.target.closest('[data-indicator]');if(!button)return;
         selectedIndicator=button.getAttribute('data-indicator');
         document.querySelectorAll('.indicator-choice').forEach(function(b){b.classList.toggle('active',b===button);});
-        indicatorLabel.textContent='Selecionado: '+button.textContent+'. Agora envie os arquivos SIAPS e PEC.';
+        indicatorLabel.textContent='Selecionado: '+button.textContent+'. Agora envie os relatórios.';
+        if(loadedReports.siaps&&loadedReports.pec){
+          if(selectedIndicator==='C3')renderC3Pair(loadedReports.siaps,loadedReports.pec);
+          else if(selectedIndicator==='CVAT')renderCvatPair(loadedReports.siaps,loadedReports.pec);
+          else renderGenericPair(loadedReports.siaps,loadedReports.pec,selectedIndicator);
+        }else if(loadedReports.siaps)renderSingleFile('siaps',loadedReports.siaps);
+        else if(loadedReports.pec)renderSingleFile('pec',loadedReports.pec);
       });
       document.getElementById('siaps-input').addEventListener('change',function(){readReport(this.files&&this.files[0],'siaps');});
       document.getElementById('pec-input').addEventListener('change',function(){readReport(this.files&&this.files[0],'pec');});
