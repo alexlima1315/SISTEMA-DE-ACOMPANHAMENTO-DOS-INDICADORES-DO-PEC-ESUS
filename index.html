@@ -501,7 +501,7 @@
           '<div class="metrics"><div class="metric score"><span>Resultado médio</span><strong>' + formatNumber(score, 2) + '%</strong><span class="status">' + classificationC3(score) + '</span></div><div class="metric"><span>Numerador</span><strong>' + formatNumber(numerator) + '</strong><span>pontos de boas práticas</span></div><div class="metric"><span>Denominador</span><strong>' + formatNumber(denominator) + '</strong><span>gestantes e puérperas</span></div></div>' +
           '<div class="table-wrap"><table><thead><tr><th>Boa prática</th><th>Pessoas contabilizadas</th><th>Cobertura no denominador</th><th>Peso</th><th>Leitura do arquivo</th></tr></thead><tbody>' + rowsHtml + '</tbody></table></div>' +
           '<div class="notice"><strong>Conferência do cálculo:</strong> ' + (aligned ? 'o numerador confere com a soma das práticas e seus pesos.' : 'a soma das práticas não confere com o numerador informado; confira competência, atualização e versão da nota técnica.') + (reportedScore !== null && Math.abs(reportedScore - score) > 0.02 ? ' A razão do CSV também diverge do recálculo.' : '') + '<br><br><strong>Interpretação:</strong> “sem registro computado” é uma diferença agregada, não uma pendência individual confirmada. A prática pode depender da idade gestacional ou do período puerperal; valide a situação no prontuário antes de planejar busca ativa.</div>' +
-          '<div class="reset-row"><button class="text-button" type="button" data-reset>Limpar análise</button></div>';
+          '<div class="reset-row"><button class="text-button" type="button" data-reset onclick="window.clearAnalysis()">Limpar análise</button></div>';
         results.style.display = 'block';
         setMessage('Relatório C3 lido. A análise está somente nesta página e será apagada ao limpar ou fechar a aba.', 'info');
       }
@@ -647,18 +647,29 @@
       area.addEventListener('dragover', function (event) { event.preventDefault(); area.classList.add('drag'); });
       area.addEventListener('dragleave', function () { area.classList.remove('drag'); });
       area.addEventListener('drop', function (event) { event.preventDefault(); area.classList.remove('drag'); setMessage('Use os botões separados para escolher o CSV do SIAPS e o CSV do PEC.','info'); });
-      results.addEventListener('click', function (event) {
-        if (event.target && event.target.closest('[data-reset]')) {
-          document.getElementById('siaps-input').value = '';
-          document.getElementById('pec-input').value = '';
-          document.getElementById('siaps-file-name').textContent = 'Nenhum arquivo escolhido';
-          document.getElementById('pec-file-name').textContent = 'Nenhum arquivo escolhido';
-          loadedReports.siaps = '';
-          loadedReports.pec = '';
-          results.innerHTML = '';
-          results.style.display = 'none';
-          message.className = 'message';
-          message.textContent = '';
+      function clearAnalysis() {
+        var siapsInput = document.getElementById('siaps-input');
+        var pecInput = document.getElementById('pec-input');
+        if (siapsInput) siapsInput.value = '';
+        if (pecInput) pecInput.value = '';
+        var siapsName = document.getElementById('siaps-file-name');
+        var pecName = document.getElementById('pec-file-name');
+        if (siapsName) siapsName.textContent = 'Nenhum arquivo escolhido';
+        if (pecName) pecName.textContent = 'Nenhum arquivo escolhido';
+        loadedReports.siaps = '';
+        loadedReports.pec = '';
+        results.innerHTML = '';
+        results.style.display = 'none';
+        message.className = 'message';
+        message.textContent = '';
+      }
+      window.clearAnalysis = clearAnalysis;
+      document.addEventListener('click', function (event) {
+        var target = event.target instanceof Element ? event.target : event.target && event.target.parentElement;
+        var resetButton = target && target.closest('[data-reset]');
+        if (resetButton) {
+          event.preventDefault();
+          clearAnalysis();
         }
       });
     })();
