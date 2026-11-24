@@ -122,7 +122,7 @@
     .catalog-state { display:inline-block; padding:5px 8px; border-radius:99px; color:var(--green); background:var(--green-soft); font-size:10px; font-weight:800; }
     .catalog-state.pending { color:#775b19; background:#fff5db; }
     @media (max-width:850px) { .catalog-grid { grid-template-columns:repeat(2,1fr); } }
-    @media (max-width:600px) { .catalog-grid { grid-template-columns:1fr; } .catalog-card p { min-height:0; }
+    @media (max-width:600px) { .catalog-grid { grid-template-columns:1fr; } .catalog-card p { min-height:0; } }
     .panel-shell { overflow:hidden; border:1px solid var(--line); border-radius:22px; background:#fff; box-shadow:var(--shadow); }
     .panel-head { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; padding:25px 27px; border-bottom:1px solid var(--line); }
     .panel-head h2 { font-size:25px; }
@@ -292,7 +292,7 @@
     <section class="section soft" id="catalogo">
       <div class="wrap">
         <div class="section-heading">
-          <div class="eyebrow">Painel completo de indicadores</div>
+          <div class="eyebrow">Indicadores disponíveis e em implantação</div>
           <h2>CVAT e todos os indicadores da APS em um só lugar.</h2>
           <p>O catálogo já organiza os componentes previstos nas notas enviadas. A leitura nominal depende dos relatórios detalhados correspondentes; resultados agregados não permitem apontar pessoas específicas.</p>
         </div>
@@ -322,7 +322,7 @@
       <div class="wrap">
         <div class="panel-shell">
           <div class="panel-head">
-            <div><div class="eyebrow">Análise de relatório</div><h2>Compare SIAPS + PEC</h2><p>O catálogo cobre CVAT, C1–C7, B1–B6 e M1–M2. A leitura automática agregada está habilitada para CVAT e C3 nesta versão.</p></div>
+            <div><div class="eyebrow">Análise de relatório</div><h2>Compare SIAPS + PEC</h2><p>A leitura automática deste painel ainda está em validação. No momento, apenas Gestação e Puerpério (C3) tem cruzamento SIAPS + PEC.</p></div>
             <span class="local-badge">Processamento local</span>
           </div>
           <div class="upload-area" id="drop-area">
