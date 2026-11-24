@@ -108,15 +108,18 @@ export async function parsePecPdf(file, onProgress) {
         else cells.updated.push(item.text);
       }));
       const leftText = cells.left.join(' ').replace(/\s+/g, ' ').trim();
+      const rowText = band.flatMap(line => line.items).sort((a, b) => a.x - b.x).map(item => item.text).join(' ').replace(/\s+/g, ' ').trim();
       const name = String(start.name || '').replace(/\s+(CPF|CNS)\s*[:\-].*$/i, '').trim();
       const cpf = leftText.match(/\bCPF\s*[:\-]?\s*([\d.\- ]{11,})/i);
       const cns = leftText.match(/\bCNS\s*[:\-]?\s*([\d.\- ]{11,})/i);
       const dob = dateIn(cells.dob.join(' '));
       const updated = dateIn(cells.updated.join(' '));
+      const phoneMatch = rowText.match(/(?:\(\d{2}\)|\b\d{2})\s*9?\d{4}[-.\s]?\d{4}\b/);
+      const phone = cells.phone.join(' ').trim() || (phoneMatch ? phoneMatch[0].trim() : '');
       if (!name || !dob) return;
       records.push([name, cpf ? cpf[1].trim() : '', cns ? cns[1].trim() : '', dob,
         cells.sex.join(' ').trim(), cells.age.join(' ').trim(), cells.address.join(' ').trim(),
-        cells.phone.join(' ').trim(), updated]);
+        phone, updated]);
     });
   }
 
