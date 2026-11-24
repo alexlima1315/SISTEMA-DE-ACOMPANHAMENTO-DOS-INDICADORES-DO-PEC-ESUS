@@ -895,7 +895,7 @@
       var pdfParserPromise=null,sheetjsPromise=null;
       var loadedReportMeta={siaps:null,pec:null};
       function pecPdfToCsv(file){
-        if(!pdfParserPromise)pdfParserPromise=import('./pdf-pec-parser.js?v=65a004df477258ef76a3102ce0c728e36d65816a');
+        if(!pdfParserPromise)pdfParserPromise=import('./pdf-pec-parser.js?v=e16d1a989416a16c19f6fff3727de25510048b0e');
         return pdfParserPromise.then(function(parser){return parser.parsePecPdf(file,function(page,total){setMessage('Lendo página '+page+' de '+total+' do PDF do PEC…','info');});});
       }
       async function excelToCsv(file){
