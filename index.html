@@ -162,7 +162,8 @@
     .cvat-pagination label { font-weight:700; }
     .cvat-pagination select { min-height:38px; padding:0 10px; border:1px solid var(--line); border-radius:9px; color:var(--ink); background:#fff; }
     .cvat-pagination [data-cvat-page-label] { color:var(--muted); margin:0 auto; }
-    .cvat-person-issues { margin:0; padding-left:18px; }
+    .cvat-person-meta { margin-top:4px; color:var(--muted); font-size:11px; line-height:1.4; }
+    .cvat-person-issues { margin:0 0 9px; padding-left:18px; }
     .cvat-person-issues li+li { margin-top:5px; }
     .cvat-pagination button:disabled { opacity:.45; cursor:not-allowed; }
     @media (max-width:600px) { .cvat-pagination { gap:7px; } .cvat-pagination [data-cvat-page-label] { order:5; width:100%; margin:0; text-align:center; } }
@@ -723,18 +724,24 @@
         var grouped=[],lookup=Object.create(null);
         state.findings.forEach(function(x,index){
           var key=x.personKey||normalize(x.name),person=lookup[key];
-          if(!person){person={key:key,name:x.name,findings:[]};lookup[key]=person;grouped.push(person);}
+          if(!person){person={key:key,name:x.name,findings:[],details:x};lookup[key]=person;grouped.push(person);}
           person.findings.push({item:x,index:index});
+          if(normalize(x.issue).indexOf('CNS')>=0)person.details.cnsNeedsCheck=true;
         });
         return grouped.filter(function(person){return !state.filter||state.filter==='all'||person.findings.some(function(entry){return cvatCategory(entry.item.issue)===state.filter;});});
       }
       function cvatPageRows(state){
         var people=cvatPeople(state),start=(state.page-1)*state.pageSize,view=people.slice(start,start+state.pageSize);
         return view.length?view.map(function(person){
-          var seen=Object.create(null),issues=person.findings.map(function(entry){var key=normalize(entry.item.issue);if(seen[key])return '';seen[key]=true;return '<li>'+escapeHtml(entry.item.issue)+'</li>';}).filter(Boolean).join('');
+          var d=person.details||{},seen=Object.create(null),selected=person.findings.filter(function(entry){return !state.filter||state.filter==='all'||cvatCategory(entry.item.issue)===state.filter;});
+          var issues=selected.map(function(entry){var key=normalize(entry.item.issue);if(seen[key])return '';seen[key]=true;return '<li>'+escapeHtml(entry.item.issue)+'</li>';}).filter(Boolean).join('');
+          var personal=[d.sex,d.age,d.dob?'Nascimento: '+d.dob:'',d.phonePresent?'Telefone informado':'Telefone não localizado'].filter(Boolean).join(' · ');
+          var identifiers='CPF: '+(d.cpfPresent?'informado':'ausente')+'<br>CNS: '+(d.cnsPresent?(d.cnsNeedsCheck?'conferir':'informado'):'ausente');
+          var unit=[d.unit||'Unidade não identificada no PDF',d.microarea?'MA '+d.microarea:'MA não informada no PDF'].join(' · ');
+          var period=d.monthsSince==null?'Data de atualização não identificada':d.monthsSince+' '+(d.monthsSince===1?'mês':'meses')+(d.updated?' · atualizado em '+d.updated:'');
           var correction='<strong>Conferir no PEC se alguma informação está ausente.</strong><br>Se estiver, atualizar o cadastro individual ou domiciliar correspondente.';
-          return '<tr><td>'+escapeHtml(person.name)+'</td><td><ul class="cvat-person-issues">'+issues+'</ul></td><td><button type="button" class="file-trigger" data-cvat-action="'+start+'">Ação necessária</button><div class="notice" data-cvat-action-detail hidden>'+correction+'</div></td></tr>';
-        }).join(''):'<tr><td colspan="3">Nenhum cadastro nesta categoria.</td></tr>';
+          return '<tr><td><strong>'+escapeHtml(person.name)+'</strong><div class="cvat-person-meta">'+escapeHtml(personal)+'</div></td><td>'+identifiers+'</td><td>'+escapeHtml(unit)+'</td><td>'+escapeHtml(period)+'</td><td><ul class="cvat-person-issues">'+issues+'</ul><button type="button" class="file-trigger" data-cvat-action="'+start+'">Ação necessária</button><div class="notice" data-cvat-action-detail hidden>'+correction+'</div></td></tr>';
+        }).join(''):'<tr><td colspan="5">Nenhum cadastro nesta categoria.</td></tr>';
       }
       function refreshCvatPagination(){
         if(!cvatReviewState)return;
@@ -775,9 +782,18 @@
         var indDateIx=col(['ULTIMA ATUALIZACAO DO CADASTRO INDIVIDUAL','DATA DA ULTIMA ATUALIZACAO INDIVIDUAL','ATUALIZACAO CADASTRO INDIVIDUAL','DATA CADASTRO INDIVIDUAL','CADASTRO INDIVIDUAL ATUALIZADO','INDIVIDUAL ATUALIZADO','ULTIMA ATUALIZACAO']);
         var homeDateIx=col(['ULTIMA ATUALIZACAO DO CADASTRO DOMICILIAR','DATA DA ULTIMA ATUALIZACAO DOMICILIAR','ATUALIZACAO CADASTRO DOMICILIAR','DATA CADASTRO DOMICILIAR','CADASTRO DOMICILIAR ATUALIZADO','DOMICILIAR ATUALIZADO']);
         var linkIx=col(['INE RESPONSAVEL','INE DA EQUIPE','EQUIPE RESPONSAVEL','EQUIPE DE REFERENCIA','UNIDADE DE SAUDE','UBS DE REFERENCIA','UNIDADE RESPONSAVEL','INE']);
+        var unitIx=col(['UNIDADE DE SAUDE','UBS DE REFERENCIA','UNIDADE RESPONSAVEL','EQUIPE RESPONSAVEL','EQUIPE DE REFERENCIA']);
+        var microareaIx=headers.findIndex(function(h){return h==='MA'||h==='MICROAREA'||h==='MICRO AREA'||h.indexOf('MICROAREA')>=0;});
+        var sexIx=col(['SEXO']),ageIx=col(['IDADE']);
         var targetMatch=String(teamValue||'').match(/\\b\\d{7,10}\\b/), targetIne=targetMatch?targetMatch[0].replace(/^0+/,''):'';
         var findings=[],dupGroups={};
-        function add(p,issue,detail){var name=String(p[nameIx]||'').trim(),rowCpf=cpfIx>=0?digits(p[cpfIx]):'',rowCns=cnsIx>=0?digits(p[cnsIx]):'',id=rowCpf||rowCns,birth=dobIx>=0?normalize(p[dobIx]):'';findings.push({personKey:id?'id:'+id:'name:'+normalize(name)+'|'+birth,name:name,issue:issue,detail:detail});}
+        function add(p,issue,detail){
+          var name=String(p[nameIx]||'').trim(),rowCpf=cpfIx>=0?digits(p[cpfIx]):'',rowCns=cnsIx>=0?digits(p[cnsIx]):'',id=rowCpf||rowCns,birth=dobIx>=0?normalize(p[dobIx]):'';
+          var updated=indDateIx>=0?String(p[indDateIx]||'').trim():'',updatedDate=parseDate(updated);
+          var monthsSince=updatedDate?Math.max(0,(refDate.getFullYear()-updatedDate.getFullYear())*12+refDate.getMonth()-updatedDate.getMonth()-(refDate.getDate()<updatedDate.getDate()?1:0)):null;
+          var unit=(loadedReportMeta.pec&&loadedReportMeta.pec.team)||(unitIx>=0?String(p[unitIx]||'').trim():'')||String(teamValue||'').replace(/\\s+INE\\s+\\d+/i,'').trim();
+          findings.push({personKey:id?'id:'+id:'name:'+normalize(name)+'|'+birth,name:name,issue:issue,detail:detail,sex:sexIx>=0?String(p[sexIx]||'').trim():'',age:ageIx>=0?String(p[ageIx]||'').trim():'',dob:dobIx>=0?String(p[dobIx]||'').trim():'',phonePresent:phoneIx>=0&&!!digits(p[phoneIx]),cpfPresent:!!rowCpf,cnsPresent:!!rowCns,cnsNeedsCheck:false,unit:unit,microarea:microareaIx>=0?String(p[microareaIx]||'').trim():'',updated:updatedDate?updatedDate.toLocaleDateString('pt-BR'):updated,monthsSince:monthsSince});
+        }
         people.forEach(function(p){
           var cpf=cpfIx>=0?String(p[cpfIx]||'').trim():'';
           var cpfDigits=digits(cpf),cns=cnsIx>=0?digits(p[cnsIx]):'';
@@ -813,7 +829,7 @@
         }
         return previewNote+'<h3>Revisão nominal do CVAT</h3><div class="metrics"><div class="metric"><span>Pessoas lidas no PEC</span><strong>'+formatNumber(people.length)+'</strong></div><div class="metric"><span>Itens para conferência</span><strong>'+formatNumber(findings.length)+'</strong></div><div class="metric"><span>Possíveis grupos duplicados</span><strong>'+formatNumber(duplicateRows.length)+'</strong></div></div>'+
           linkNote+missingNote+'<div class="notice"><strong>Referência da atualização:</strong> '+escapeHtml(refDate.toLocaleDateString('pt-BR'))+'. A análise considera atualizações individual e domiciliar separadamente; registros com mais de 12 meses são sinalizados para atualização prioritária. Se a competência não pôde ser lida do CSV, foi usada a data atual do navegador.</div>'+
-          '<h3>Observações por pessoa</h3><div class="cvat-pagination"><label for="cvat-observation-filter">Filtrar observação</label><select id="cvat-observation-filter" data-cvat-filter>'+options+'</select><label for="cvat-page-size">Cadastros por página</label><select id="cvat-page-size" data-cvat-page-size><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option></select><button type="button" class="file-trigger" data-cvat-prev>Anterior</button><span data-cvat-page-label>'+pageLabel+'</span><button type="button" class="file-trigger" data-cvat-next>Próxima</button></div><div class="table-wrap"><table><thead><tr><th>Nome da pessoa</th><th>Inconsistência</th><th>Ação necessária</th></tr></thead><tbody data-cvat-findings>'+cvatPageRows(cvatReviewState)+'</tbody></table></div>'+
+          '<h3>Observações por pessoa</h3><div class="cvat-pagination"><label for="cvat-observation-filter">Filtrar observação</label><select id="cvat-observation-filter" data-cvat-filter>'+options+'</select><label for="cvat-page-size">Cadastros por página</label><select id="cvat-page-size" data-cvat-page-size><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option></select><button type="button" class="file-trigger" data-cvat-prev>Anterior</button><span data-cvat-page-label>'+pageLabel+'</span><button type="button" class="file-trigger" data-cvat-next>Próxima</button></div><div class="table-wrap"><table><thead><tr><th>Nome do cidadão &amp; dados pessoais</th><th>CPF / CNS</th><th>Unidade de saúde / MA</th><th>Período sem atualização</th><th>Ação necessária</th></tr></thead><tbody data-cvat-findings>'+cvatPageRows(cvatReviewState)+'</tbody></table></div>'+
           '<div class="notice"><strong>Base oficial:</strong> o CVAT considera pessoa cadastrada quando o cadastro individual atende à validação do SIAPS; cadastro completo exige também cadastro domiciliar/territorial válido. Cadastro rápido não pontua. Esta leitura local é uma triagem, não substitui validação nacional nem confirmação manual da equipe.</div>';
       }
 
@@ -874,7 +890,7 @@
       var pdfParserPromise=null,sheetjsPromise=null;
       var loadedReportMeta={siaps:null,pec:null};
       function pecPdfToCsv(file){
-        if(!pdfParserPromise)pdfParserPromise=import('./pdf-pec-parser.js?v=633cfc13e8c4c28e9d4d17921205e4d021bafe12');
+        if(!pdfParserPromise)pdfParserPromise=import('./pdf-pec-parser.js?v=65a004df477258ef76a3102ce0c728e36d65816a');
         return pdfParserPromise.then(function(parser){return parser.parsePecPdf(file,function(page,total){setMessage('Lendo página '+page+' de '+total+' do PDF do PEC…','info');});});
       }
       async function excelToCsv(file){
