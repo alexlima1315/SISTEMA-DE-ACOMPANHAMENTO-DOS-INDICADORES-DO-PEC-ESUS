@@ -642,7 +642,8 @@
         document.querySelectorAll('.indicator-choice').forEach(function(b){b.classList.toggle('active',b===button);});
         indicatorLabel.textContent='Selecionado: '+button.textContent+'. Agora envie os arquivos SIAPS e PEC.';
       });
-      document.getElementById('siaps-input').addEventListener('change',function(){readReport(this.files&&this.files[0],'siaps');});\n      document.getElementById('pec-input').addEventListener('change',function(){readReport(this.files&&this.files[0],'pec');});
+      document.getElementById('siaps-input').addEventListener('change',function(){readReport(this.files&&this.files[0],'siaps');});
+      document.getElementById('pec-input').addEventListener('change',function(){readReport(this.files&&this.files[0],'pec');});
       area.addEventListener('dragover', function (event) { event.preventDefault(); area.classList.add('drag'); });
       area.addEventListener('dragleave', function () { area.classList.remove('drag'); });
       area.addEventListener('drop', function (event) { event.preventDefault(); area.classList.remove('drag'); setMessage('Use os botões separados para escolher o CSV do SIAPS e o CSV do PEC.','info'); });
