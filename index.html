@@ -777,7 +777,7 @@
         var linkIx=col(['INE RESPONSAVEL','INE DA EQUIPE','EQUIPE RESPONSAVEL','EQUIPE DE REFERENCIA','UNIDADE DE SAUDE','UBS DE REFERENCIA','UNIDADE RESPONSAVEL','INE']);
         var targetMatch=String(teamValue||'').match(/\\b\\d{7,10}\\b/), targetIne=targetMatch?targetMatch[0].replace(/^0+/,''):'';
         var findings=[],dupGroups={};
-        function add(p,issue,detail){var name=String(p[nameIx]||'').trim(),id=cpfDigits||cns||'',birth=dobIx>=0?normalize(p[dobIx]):'';findings.push({personKey:id?'id:'+id:'name:'+normalize(name)+'|'+birth,name:name,issue:issue,detail:detail});}
+        function add(p,issue,detail){var name=String(p[nameIx]||'').trim(),rowCpf=cpfIx>=0?digits(p[cpfIx]):'',rowCns=cnsIx>=0?digits(p[cnsIx]):'',id=rowCpf||rowCns,birth=dobIx>=0?normalize(p[dobIx]):'';findings.push({personKey:id?'id:'+id:'name:'+normalize(name)+'|'+birth,name:name,issue:issue,detail:detail});}
         people.forEach(function(p){
           var cpf=cpfIx>=0?String(p[cpfIx]||'').trim():'';
           var cpfDigits=digits(cpf),cns=cnsIx>=0?digits(p[cnsIx]):'';
