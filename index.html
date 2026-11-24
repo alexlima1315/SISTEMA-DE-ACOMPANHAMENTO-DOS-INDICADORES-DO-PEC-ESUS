@@ -3,22 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f7f2fb">
+  <meta name="theme-color" content="#f2f8fa">
   <meta name="description" content="Painel local para acompanhar indicadores da Atenção Primária à Saúde com regras oficiais do SIAPS.">
-  <title>APS em Foco — indicadores claros, cuidado em movimento</title>
+  <title>Carvalho da Cunha | APS em Foco</title>
   <style>
     :root {
-      --ink: #172033;
-      --muted: #657087;
-      --blue: #4f5bff;
-      --blue-dark: #3641d8;
-      --blue-soft: #eef0ff;
-      --lilac: #faf5fb;
-      --lilac-deep: #f3eafa;
-      --line: #e8e3ed;
+      --ink: #0b2740;
+      --muted: #607284;
+      --blue: #078dbb;
+      --blue-dark: #056d99;
+      --blue-soft: #e6f4f8;
+      --lilac: #f2f8fa;
+      --lilac-deep: #edf5e5;
+      --line: #dfe8ed;
       --white: #fff;
-      --green: #13815d;
-      --green-soft: #eaf7f0;
+      --green: #6d9e2c;
+      --green-soft: #eff6e5;
       --amber: #986300;
       --amber-soft: #fff5db;
       --red: #a63d4f;
@@ -43,9 +43,13 @@
       background: rgba(255,255,255,.92); backdrop-filter: blur(14px);
       border-bottom: 1px solid rgba(232,227,237,.8);
     }
-    .nav { display:flex; align-items:center; justify-content:space-between; min-height:72px; gap:20px; }
+    .nav { display:flex; align-items:center; justify-content:space-between; min-height:82px; gap:20px; }
     .brand { display:flex; align-items:center; gap:10px; color:var(--ink); text-decoration:none; font-weight:800; letter-spacing:-.03em; }
-    .brand-mark { display:grid; place-items:center; width:38px; height:38px; border-radius:13px; color:#fff; background:linear-gradient(135deg,#6570ff,#8b5bdf); box-shadow:0 7px 16px rgba(79,91,255,.22); }
+    .brand-logo { display:block; flex:none; width:88px; height:70px; object-fit:contain; }
+    .brand-product { display:grid; gap:3px; line-height:1.08; }
+    .brand-product strong { font-size:15px; }
+    .brand-product small { color:var(--muted); font-size:10px; font-weight:650; letter-spacing:.02em; }
+    .brand-mark { display:grid; place-items:center; width:38px; height:38px; border-radius:13px; color:#fff; background:linear-gradient(135deg,#078fbe,#83b735); box-shadow:0 7px 16px rgba(7,141,187,.22); }
     .brand-mark svg { width:21px; height:21px; }
     .nav-links { display:flex; align-items:center; gap:26px; color:var(--muted); font-size:14px; }
     .nav-links a { text-decoration:none; }
@@ -58,18 +62,18 @@
     }
     .button:hover { transform:translateY(-1px); background:var(--blue-dark); }
     .button.secondary { color:var(--blue-dark); background:var(--blue-soft); box-shadow:none; }
-    .button:focus-visible, a:focus-visible, input:focus-visible { outline:3px solid #aab0ff; outline-offset:3px; }
-    .hero { overflow:hidden; padding:82px 0 72px; background:radial-gradient(ellipse at 80% 22%, #f0e9ff 0, transparent 31%), linear-gradient(180deg,#fbf7fc 0%,#fff 100%); }
+    .button:focus-visible, a:focus-visible, input:focus-visible { outline:3px solid #9ecfe0; outline-offset:3px; }
+    .hero { overflow:hidden; padding:82px 0 72px; background:radial-gradient(ellipse at 80% 22%, #dff2f7 0, transparent 31%), linear-gradient(180deg,#f4f9fb 0%,#fff 100%); }
     .hero-grid { display:grid; grid-template-columns:1.05fr .95fr; align-items:center; gap:54px; }
     .eyebrow { display:inline-flex; align-items:center; gap:8px; margin-bottom:17px; color:var(--blue); font-size:12px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
-    .eyebrow .dot { width:7px; height:7px; border-radius:50%; background:#8a63ec; box-shadow:0 0 0 4px #ece5ff; }
+    .eyebrow .dot { width:7px; height:7px; border-radius:50%; background:#82b435; box-shadow:0 0 0 4px #e5f2d7; }
     h1 { max-width:650px; margin:0; font-size:clamp(38px,5vw,62px); line-height:1.04; letter-spacing:-.055em; }
-    .hero-copy { max-width:590px; margin:20px 0 25px; color:#59647a; font-size:18px; }
+    .hero-copy { max-width:590px; margin:20px 0 25px; color:#5d6f81; font-size:18px; }
     .hero-actions { display:flex; flex-wrap:wrap; gap:12px; }
-    .privacy-note { display:flex; align-items:center; gap:9px; margin-top:21px; color:#68748a; font-size:13px; }
+    .privacy-note { display:flex; align-items:center; gap:9px; margin-top:21px; color:#647788; font-size:13px; }
     .privacy-note svg { flex:none; color:var(--green); }
     .preview {
-      position:relative; padding:23px; border:1px solid #e7deef; border-radius:24px;
+      position:relative; padding:23px; border:1px solid #dbe9ef; border-radius:24px;
       background:rgba(255,255,255,.86); box-shadow:var(--shadow);
       transform:rotate(1deg);
     }
@@ -82,11 +86,11 @@
     .preview-score .score-pill { padding:7px 10px; border-radius:10px; color:var(--amber); background:var(--amber-soft); font-size:12px; font-weight:800; }
     .mini-bars { display:grid; gap:12px; }
     .mini-row { display:grid; grid-template-columns:1fr auto; gap:7px 14px; align-items:center; font-size:12px; }
-    .mini-row .label { color:#525e74; }
+    .mini-row .label { color:#4c6478; }
     .mini-row b { font-size:12px; }
-    .bar { grid-column:1 / -1; height:7px; overflow:hidden; border-radius:10px; background:#f0edf4; }
-    .bar i { display:block; height:100%; border-radius:10px; background:linear-gradient(90deg,#7680ff,#a075e8); }
-    .preview-foot { margin-top:17px; padding:11px 12px; border-radius:12px; color:#5d6380; background:#f8f6fc; font-size:11px; }
+    .bar { grid-column:1 / -1; height:7px; overflow:hidden; border-radius:10px; background:#edf3f5; }
+    .bar i { display:block; height:100%; border-radius:10px; background:linear-gradient(90deg,#078fbe,#83b735); }
+    .preview-foot { margin-top:17px; padding:11px 12px; border-radius:12px; color:#536a79; background:#f3f9f5; font-size:11px; }
     .float-icon { position:absolute; top:-19px; right:-17px; display:grid; place-items:center; width:54px; height:54px; border-radius:17px; color:var(--blue); background:#fff; box-shadow:var(--shadow); }
     .float-icon svg { width:26px; height:26px; }
     .section { padding:76px 0; }
@@ -96,7 +100,7 @@
     h2 { margin:0; font-size:clamp(27px,3.2vw,39px); line-height:1.14; letter-spacing:-.04em; }
     .section-heading p { margin:12px auto 0; color:var(--muted); font-size:16px; }
     .steps { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
-    .step-card { min-height:202px; padding:24px; border:1px solid #e9deed; border-radius:16px; background:#fff; box-shadow:0 3px 8px rgba(35,31,69,.025); }
+    .step-card { min-height:202px; padding:24px; border:1px solid #dbe9ed; border-radius:16px; background:#fff; box-shadow:0 3px 8px rgba(35,31,69,.025); }
     .step-top { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
     .step-no { color:var(--blue); font-size:11px; font-weight:900; letter-spacing:.08em; }
     .step-icon { display:grid; place-items:center; width:44px; height:44px; border-radius:14px; color:var(--blue); background:var(--blue-soft); }
@@ -105,8 +109,8 @@
     .step-card p, .benefit-row p { margin:0; color:var(--muted); font-size:14px; }
     .benefits { display:grid; gap:14px; }
     .benefit-row { display:flex; align-items:flex-start; gap:17px; padding:21px 23px; border:1px solid var(--line); border-radius:15px; background:#fff; box-shadow:0 3px 9px rgba(35,31,69,.025); }
-    .benefit-icon { flex:none; display:grid; place-items:center; width:46px; height:46px; border-radius:14px; color:#5963ff; background:#eef0ff; }
-    .benefit-row:nth-child(2) .benefit-icon { color:#8451d7; background:#f2eaff; }
+    .benefit-icon { flex:none; display:grid; place-items:center; width:46px; height:46px; border-radius:14px; color:#078fbe; background:#e6f4f8; }
+    .benefit-row:nth-child(2) .benefit-icon { color:#83af38; background:#edf5e5; }
     .benefit-row:nth-child(3) .benefit-icon { color:var(--green); background:var(--green-soft); }
     .benefit-icon svg { width:22px; height:22px; }
     .benefit-note { margin:30px 0 0; text-align:center; font-weight:750; }
@@ -115,20 +119,20 @@
     .panel-head h2 { font-size:25px; }
     .panel-head p { margin:6px 0 0; color:var(--muted); font-size:14px; }
     .local-badge { display:inline-flex; align-items:center; gap:7px; white-space:nowrap; padding:8px 11px; border-radius:99px; color:var(--green); background:var(--green-soft); font-size:12px; font-weight:800; }
-    .local-badge:before { content:""; width:7px; height:7px; border-radius:50%; background:#24a477; }
-    .upload-area { margin:24px 27px; padding:27px; border:1.5px dashed #cfc9df; border-radius:17px; background:#fcfbfe; text-align:center; transition:.15s ease; }
-    .upload-area.drag { border-color:var(--blue); background:#f5f4ff; }
+    .local-badge:before { content:""; width:7px; height:7px; border-radius:50%; background:#77ab32; }
+    .upload-area { margin:24px 27px; padding:27px; border:1.5px dashed #cadfe7; border-radius:17px; background:#f8fbfc; text-align:center; transition:.15s ease; }
+    .upload-area.drag { border-color:var(--blue); background:#eff7fa; }
     .upload-icon { display:grid; place-items:center; width:48px; height:48px; margin:0 auto 12px; border-radius:15px; color:var(--blue); background:var(--blue-soft); }
     .upload-icon svg { width:23px; height:23px; }
     .upload-area h3 { margin:0; font-size:16px; }
     .upload-area p { margin:6px 0 15px; color:var(--muted); font-size:13px; }
     .upload-area input { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; clip-path:inset(50%); }
-    .file-trigger { display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:0 15px; border:1px solid #d9d8f6; border-radius:11px; color:var(--blue-dark); background:#fff; font-size:13px; font-weight:750; cursor:pointer; }
+    .file-trigger { display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:0 15px; border:1px solid #c8e1e9; border-radius:11px; color:var(--blue-dark); background:#fff; font-size:13px; font-weight:750; cursor:pointer; }
     .file-trigger:hover { background:var(--blue-soft); }
-    .upload-hint { margin-top:11px; color:#858da0; font-size:11px; }
+    .upload-hint { margin-top:11px; color:#82909a; font-size:11px; }
     .message { display:none; margin:0 27px 20px; padding:13px 15px; border-radius:12px; font-size:13px; }
     .message.error { display:block; color:#8d293c; background:#fff0f2; }
-    .message.info { display:block; color:#53617a; background:#f2f4fb; }
+    .message.info { display:block; color:#536a79; background:#f2f7f8; }
     .results { display:none; padding:0 27px 27px; }
     .result-context { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin:0 0 18px; color:var(--muted); font-size:12px; }
     .context-chip { padding:6px 9px; border:1px solid var(--line); border-radius:99px; background:#fff; }
@@ -136,15 +140,15 @@
     .metric { padding:17px; border:1px solid var(--line); border-radius:15px; background:#fff; }
     .metric span { display:block; color:var(--muted); font-size:12px; }
     .metric strong { display:block; margin-top:6px; font-size:25px; letter-spacing:-.04em; }
-    .metric.score { background:linear-gradient(135deg,#f4f3ff,#fbf8ff); border-color:#e5e1ff; }
+    .metric.score { background:linear-gradient(135deg,#eaf6f8,#f8fbfc); border-color:#d6e9ed; }
     .table-wrap { overflow-x:auto; border:1px solid var(--line); border-radius:15px; }
     table { width:100%; border-collapse:collapse; text-align:left; font-size:13px; }
-    th { padding:12px 14px; color:#677188; background:#faf9fc; font-size:11px; letter-spacing:.04em; text-transform:uppercase; }
-    td { padding:13px 14px; border-top:1px solid #f0edf3; vertical-align:middle; }
+    th { padding:12px 14px; color:#607284; background:#f5f9fa; font-size:11px; letter-spacing:.04em; text-transform:uppercase; }
+    td { padding:13px 14px; border-top:1px solid #edf3f5; vertical-align:middle; }
     td.num { white-space:nowrap; font-variant-numeric:tabular-nums; }
     .status { display:inline-block; padding:5px 8px; border-radius:99px; color:#67500c; background:#fff4d5; font-size:11px; font-weight:750; }
     .status.good { color:var(--green); background:var(--green-soft); }
-    .notice { margin-top:17px; padding:14px 16px; border-radius:13px; color:#5b6178; background:#f6f4fa; font-size:12px; }
+    .notice { margin-top:17px; padding:14px 16px; border-radius:13px; color:#5b6178; background:#f2f7f8; font-size:12px; }
     .notice strong { color:var(--ink); }
     .reset-row { display:flex; justify-content:flex-end; margin-top:17px; }
     .text-button { padding:8px 0; border:0; color:var(--blue-dark); background:transparent; font-size:13px; font-weight:750; cursor:pointer; }
@@ -161,7 +165,7 @@
     }
     @media (max-width:600px) {
       .wrap { width:min(100% - 28px,1120px); }
-      .nav { min-height:64px; }
+      .nav { min-height:76px; }
       .nav-links a:not(.button) { display:none; }
       .nav-links .button { min-height:40px; padding:0 12px; font-size:12px; }
       .hero { padding:55px 0 52px; }
@@ -185,9 +189,9 @@
 <body>
   <header class="topbar">
     <div class="wrap nav">
-      <a class="brand" href="#inicio" aria-label="APS em Foco, início">
-        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3.2 14.5 9.5 20.8 12l-6.3 2.5L12 20.8l-2.5-6.3L3.2 12l6.3-2.5L12 3.2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg></span>
-        <span>APS em Foco</span>
+      <a class="brand" href="#inicio" aria-label="Carvalho da Cunha, APS em Foco">
+        <img class="brand-logo" src="assets/logo-carvalho-da-cunha.png" alt="Carvalho da Cunha — Solução Tecnológica" width="88" height="70">
+        <span class="brand-product"><strong>APS em Foco</strong><small>por Carvalho da Cunha</small></span>
       </a>
       <nav class="nav-links" aria-label="Navegação principal">
         <a href="#como-funciona">Como funciona</a>
@@ -299,7 +303,7 @@
   </main>
 
   <footer class="footer">
-    <div class="wrap footer-inner"><span><strong>APS em Foco</strong> · Apoio ao monitoramento da Atenção Primária</span><span>Regras públicas do Ministério da Saúde · <a href="https://www.gov.br/saude/pt-br/composicao/saps/publicacoes/fichas-tecnicas/equipe-de-atencao-primaria-e-saude-da-familia/nota-metodologica-c3-cuidado-na-gestacao-e-puerperio" target="_blank" rel="noreferrer">Nota C3</a></span></div>
+    <div class="wrap footer-inner"><span><strong>Carvalho da Cunha</strong> · Solução Tecnológica para a APS</span><span>APS em Foco · Regras públicas do Ministério da Saúde · <a href="https://www.gov.br/saude/pt-br/composicao/saps/publicacoes/fichas-tecnicas/equipe-de-atencao-primaria-e-saude-da-familia/nota-metodologica-c3-cuidado-na-gestacao-e-puerperio" target="_blank" rel="noreferrer">Nota C3</a></span></div>
   </footer>
 
   <script>

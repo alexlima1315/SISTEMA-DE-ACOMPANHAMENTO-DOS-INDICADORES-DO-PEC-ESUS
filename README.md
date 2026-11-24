@@ -1,6 +1,8 @@
 # APS em Foco
 
-Painel estático para leitura local de relatórios agregados do SIAPS e acompanhamento de indicadores da Atenção Primária à Saúde.
+Painel estático da **Carvalho da Cunha — Solução Tecnológica** para leitura local de relatórios agregados do SIAPS e acompanhamento de indicadores da Atenção Primária à Saúde.
+
+A interface usa a logo enviada pela empresa e uma paleta azul, verde e azul-marinho. Os relatórios de saúde não fazem parte deste repositório público.
 
 ## O que esta versão faz
 
