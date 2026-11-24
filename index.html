@@ -114,6 +114,15 @@
     .benefit-row:nth-child(3) .benefit-icon { color:var(--green); background:var(--green-soft); }
     .benefit-icon svg { width:22px; height:22px; }
     .benefit-note { margin:30px 0 0; text-align:center; font-weight:750; }
+    .catalog-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+    .catalog-card { padding:20px; border:1px solid var(--line); border-radius:15px; background:#fff; }
+    .catalog-code { display:inline-grid; min-width:40px; height:28px; place-items:center; padding:0 8px; border-radius:9px; color:var(--blue-dark); background:var(--blue-soft); font-size:12px; font-weight:900; }
+    .catalog-card h3 { margin:12px 0 6px; font-size:15px; }
+    .catalog-card p { min-height:44px; margin:0 0 13px; color:var(--muted); font-size:13px; }
+    .catalog-state { display:inline-block; padding:5px 8px; border-radius:99px; color:var(--green); background:var(--green-soft); font-size:10px; font-weight:800; }
+    .catalog-state.pending { color:#775b19; background:#fff5db; }
+    @media (max-width:850px) { .catalog-grid { grid-template-columns:repeat(2,1fr); } }
+    @media (max-width:600px) { .catalog-grid { grid-template-columns:1fr; } .catalog-card p { min-height:0; }
     .panel-shell { overflow:hidden; border:1px solid var(--line); border-radius:22px; background:#fff; box-shadow:var(--shadow); }
     .panel-head { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; padding:25px 27px; border-bottom:1px solid var(--line); }
     .panel-head h2 { font-size:25px; }
@@ -195,7 +204,7 @@
       </a>
       <nav class="nav-links" aria-label="Navegação principal">
         <a href="#como-funciona">Como funciona</a>
-        <a href="#indicadores">Indicadores</a>
+        <a href="#catalogo">Indicadores</a>
         <a class="button" href="#importar">Analisar relatório <span aria-hidden="true">↗</span></a>
       </nav>
     </div>
@@ -280,11 +289,40 @@
       </div>
     </section>
 
+    <section class="section soft" id="catalogo">
+      <div class="wrap">
+        <div class="section-heading">
+          <div class="eyebrow">Painel completo de indicadores</div>
+          <h2>CVAT e todos os indicadores da APS em um só lugar.</h2>
+          <p>O catálogo já organiza os componentes previstos nas notas enviadas. A leitura nominal depende dos relatórios detalhados correspondentes; resultados agregados não permitem apontar pessoas específicas.</p>
+        </div>
+        <div class="catalog-grid">
+          <article class="catalog-card"><span class="catalog-code">CVAT</span><h3>Vínculo e Acompanhamento Territorial</h3><p>Cadastro individual e domiciliar, pessoas acompanhadas, públicos prioritários, satisfação e vínculo com a equipe.</p><span class="catalog-state">CSV agregado reconhecido</span></article>
+          <article class="catalog-card"><span class="catalog-code">C1</span><h3>Mais acesso</h3><p>Acesso e oferta de atendimentos na Atenção Primária.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card"><span class="catalog-code">C2</span><h3>Desenvolvimento infantil</h3><p>Acompanhamento da saúde e desenvolvimento das crianças.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card"><span class="catalog-code">C3</span><h3>Gestação e puerpério</h3><p>Pré-natal, exames, visitas, puerpério e saúde bucal.</p><span class="catalog-state">CSV agregado reconhecido</span></article>
+          <article class="catalog-card"><span class="catalog-code">C4</span><h3>Cuidado da pessoa com diabetes</h3><p>Acompanhamento clínico e práticas de cuidado para diabetes.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card"><span class="catalog-code">C5</span><h3>Cuidado da pessoa com hipertensão</h3><p>Acompanhamento e controle da hipertensão.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card"><span class="catalog-code">C6</span><h3>Cuidado da pessoa idosa</h3><p>Acompanhamento integral da pessoa idosa.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card"><span class="catalog-code">C7</span><h3>Prevenção do câncer na mulher</h3><p>Ações de rastreamento e cuidado da saúde da mulher.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card"><span class="catalog-code">B1</span><h3>Primeira consulta odontológica programada</h3><p>Acesso ao cuidado odontológico programado.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card"><span class="catalog-code">B2</span><h3>Tratamento odontológico concluído</h3><p>Continuidade e conclusão dos tratamentos iniciados.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card"><span class="catalog-code">B3</span><h3>Taxa de exodontia</h3><p>Monitoramento de exodontias nos atendimentos odontológicos.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card"><span class="catalog-code">B4</span><h3>Escovação supervisionada</h3><p>Ações coletivas de escovação supervisionada.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card"><span class="catalog-code">B5</span><h3>Procedimentos odontológicos preventivos</h3><p>Procedimentos de prevenção em saúde bucal.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card"><span class="catalog-code">B6</span><h3>Tratamento restaurador atraumático</h3><p>Ações de tratamento restaurador atraumático.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card"><span class="catalog-code">M1</span><h3>Indicador M1</h3><p>Indicador da equipe multiprofissional conforme Nota Metodológica M1.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card"><span class="catalog-code">M2</span><h3>Indicador M2</h3><p>Indicador da equipe multiprofissional conforme Nota Metodológica M2.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+        </div>
+        <div class="notice"><strong>Escopo desta versão:</strong> CVAT e C3 possuem leitura agregada no importador. Os demais indicadores já aparecem no catálogo, mas a apuração e as listas de pessoas serão ativadas conforme validarmos o CSV SIAPS e a exportação nominal do PEC de cada tema contra sua nota metodológica. Arquivos pessoais não devem ser publicados no GitHub.</div>
+      </div>
+    </section>
+
     <section class="section" id="importar">
       <div class="wrap">
         <div class="panel-shell">
           <div class="panel-head">
-            <div><div class="eyebrow">Análise de relatório</div><h2>Comece pelo CSV do SIAPS</h2><p>Esta versão reconhece os relatórios agregados de CVAT e Gestação e Puerpério.</p></div>
+            <div><div class="eyebrow">Análise de relatório</div><h2>Comece pelo CSV do SIAPS</h2><p>O catálogo cobre CVAT, C1–C7, B1–B6 e M1–M2. A leitura automática agregada está habilitada para CVAT e C3 nesta versão.</p></div>
             <span class="local-badge">Processamento local</span>
           </div>
           <div class="upload-area" id="drop-area">
@@ -293,7 +331,7 @@
             <p>O arquivo é lido no navegador e descartado ao fechar ou limpar a análise.</p>
             <label class="file-trigger" for="file-input">Escolher arquivo CSV</label>
             <input id="file-input" type="file" accept=".csv,text/csv" aria-label="Selecionar relatório CSV do SIAPS">
-            <div class="upload-hint">Compatíveis: Relatório CVAT — Visão por Equipe e Relatório Qualidade — Visão por Equipe</div>
+            <div class="upload-hint">CSV SIAPS: CVAT e Gestação e Puerpério. Os demais módulos estão catalogados e aguardam validação dos respectivos arquivos.</div>
           </div>
           <div id="message" class="message" role="status" aria-live="polite"></div>
           <div id="results" class="results"></div>
@@ -318,8 +356,18 @@
         return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s+/g, ' ').trim();
       }
       function parseCsv(text) {
-        var first = (text.split(/\r?\n/).find(function (line) { return line.trim(); }) || '');
-        var delimiter = (first.match(/;/g) || []).length >= (first.match(/,/g) || []).length ? ';' : ',';
+        var candidates = [';', ',', '\\t'];
+        var lines = text.split(/\r?\n/).filter(function (line) { return line.trim(); }).slice(0, 20);
+        var delimiter = candidates.map(function (d) {
+          return { d: d, score: lines.reduce(function (sum, line) {
+            var quoted = false, count = 0;
+            for (var j = 0; j < line.length; j++) {
+              if (line[j] === '"') quoted = !quoted;
+              else if (line[j] === d && !quoted) count++;
+            }
+            return sum + count;
+          }, 0) };
+        }).sort(function (a, b) { return b.score - a.score; })[0].d;
         var rows = [], row = [], field = '', quoted = false;
         for (var i = 0; i < text.length; i++) {
           var ch = text[i];
@@ -458,12 +506,20 @@
         var rows = parseCsv(text);
         var all = normalize(rows.map(function (r) { return r.join(' '); }).join(' '));
         var context = contextOf(rows);
-        if (all.indexOf('CUIDADO NA GESTACAO E PUERPERIO') >= 0 || all.indexOf('RELATORIO QUALIDADE - VISAO POR EQUIPE') >= 0) {
+        var c3Signature = all.indexOf('GESTACAO E PUERPERIO') >= 0 ||
+          all.indexOf('PRIMEIRA CONSULTA DE PRE NATAL') >= 0 ||
+          all.indexOf('SOMATORIO DAS BOAS PRATICAS') >= 0 ||
+          all.indexOf('TOTAL DE GESTANTES E PUERPERAS') >= 0 ||
+          all.indexOf('07 CONSULTAS DE PRE NATAL') >= 0;
+        var cvatSignature = all.indexOf('RELATORIO CVAT') >= 0 ||
+          (all.indexOf('PESSOAS SOMENTE COM CADASTRO INDIVIDUAL') >= 0 && all.indexOf('PESSOAS VINCULADAS') >= 0) ||
+          (all.indexOf('CADASTRO DOMICILIAR') >= 0 && all.indexOf('PONTUACAO') >= 0);
+        if (c3Signature || all.indexOf('RELATORIO QUALIDADE - VISAO POR EQUIPE') >= 0) {
           renderC3(rows, context);
-        } else if (all.indexOf('RELATORIO CVAT - VISAO POR EQUIPE') >= 0 || all.indexOf('PONTUACAO') >= 0 && all.indexOf('CADASTRO DOMICILIAR') >= 0) {
+        } else if (cvatSignature) {
           renderCvat(rows, context);
         } else {
-          throw new Error('Não reconheci este formato. Envie um CSV de visão por equipe do CVAT ou do indicador Cuidado na Gestação e Puerpério.');
+          throw new Error('Não reconheci este CSV. Confira se é a exportação “Visão por Equipe” do SIAPS para CVAT ou Cuidado na Gestação e Puerpério. C1–C7, B1–B6 e M1–M2 estão no catálogo; seus arquivos ainda precisam ser validados para leitura automática.');
         }
       }
       function loadFile(file) {
@@ -478,7 +534,7 @@
           catch (error) { results.style.display = 'none'; results.innerHTML = ''; setMessage(error.message || 'Não foi possível ler o relatório.', 'error'); }
         };
         reader.onerror = function () { setMessage('Não foi possível abrir o arquivo selecionado.', 'error'); };
-        reader.readAsText(file, 'UTF-8');
+        reader.readAsArrayBuffer(file);
       }
       input.addEventListener('change', function () { loadFile(input.files && input.files[0]); });
       area.addEventListener('dragover', function (event) { event.preventDefault(); area.classList.add('drag'); });
