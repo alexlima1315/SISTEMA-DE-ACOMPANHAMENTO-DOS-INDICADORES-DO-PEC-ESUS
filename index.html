@@ -121,6 +121,8 @@
     .indicator-choice:hover,.indicator-choice.active { border-color:var(--blue); color:var(--blue-dark); background:var(--blue-soft); }
     .catalog-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
     .catalog-card { padding:20px; border:1px solid var(--line); border-radius:15px; background:#fff; }
+    .catalog-clickable { cursor:pointer; transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease; }
+    .catalog-clickable:hover,.catalog-clickable:focus-visible { transform:translateY(-2px); border-color:var(--blue); box-shadow:var(--shadow); outline:none; }
     .catalog-code { display:inline-grid; min-width:40px; height:28px; place-items:center; padding:0 8px; border-radius:9px; color:var(--blue-dark); background:var(--blue-soft); font-size:12px; font-weight:900; }
     .catalog-card h3 { margin:12px 0 6px; font-size:15px; }
     .catalog-card p { min-height:44px; margin:0 0 13px; color:var(--muted); font-size:13px; }
@@ -302,22 +304,22 @@
           <p>O catálogo já organiza os componentes previstos nas notas enviadas. A leitura nominal depende dos relatórios detalhados correspondentes; resultados agregados não permitem apontar pessoas específicas.</p>
         </div>
         <div class="catalog-grid">
-          <article class="catalog-card"><span class="catalog-code">CVAT</span><h3>Vínculo e Acompanhamento Territorial</h3><p>Cadastro individual e domiciliar, pessoas acompanhadas, públicos prioritários, satisfação e vínculo com a equipe.</p><span class="catalog-state">CSV agregado reconhecido</span></article>
-          <article class="catalog-card"><span class="catalog-code">C1</span><h3>Mais acesso</h3><p>Acesso e oferta de atendimentos na Atenção Primária.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
-          <article class="catalog-card"><span class="catalog-code">C2</span><h3>Desenvolvimento infantil</h3><p>Acompanhamento da saúde e desenvolvimento das crianças.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
-          <article class="catalog-card"><span class="catalog-code">C3</span><h3>Gestação e puerpério</h3><p>Pré-natal, exames, visitas, puerpério e saúde bucal.</p><span class="catalog-state">CSV agregado reconhecido</span></article>
-          <article class="catalog-card"><span class="catalog-code">C4</span><h3>Cuidado da pessoa com diabetes</h3><p>Acompanhamento clínico e práticas de cuidado para diabetes.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
-          <article class="catalog-card"><span class="catalog-code">C5</span><h3>Cuidado da pessoa com hipertensão</h3><p>Acompanhamento e controle da hipertensão.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
-          <article class="catalog-card"><span class="catalog-code">C6</span><h3>Cuidado da pessoa idosa</h3><p>Acompanhamento integral da pessoa idosa.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
-          <article class="catalog-card"><span class="catalog-code">C7</span><h3>Prevenção do câncer na mulher</h3><p>Ações de rastreamento e cuidado da saúde da mulher.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
-          <article class="catalog-card"><span class="catalog-code">B1</span><h3>Primeira consulta odontológica programada</h3><p>Acesso ao cuidado odontológico programado.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
-          <article class="catalog-card"><span class="catalog-code">B2</span><h3>Tratamento odontológico concluído</h3><p>Continuidade e conclusão dos tratamentos iniciados.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
-          <article class="catalog-card"><span class="catalog-code">B3</span><h3>Taxa de exodontia</h3><p>Monitoramento de exodontias nos atendimentos odontológicos.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
-          <article class="catalog-card"><span class="catalog-code">B4</span><h3>Escovação supervisionada</h3><p>Ações coletivas de escovação supervisionada.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
-          <article class="catalog-card"><span class="catalog-code">B5</span><h3>Procedimentos odontológicos preventivos</h3><p>Procedimentos de prevenção em saúde bucal.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
-          <article class="catalog-card"><span class="catalog-code">B6</span><h3>Tratamento restaurador atraumático</h3><p>Ações de tratamento restaurador atraumático.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
-          <article class="catalog-card"><span class="catalog-code">M1</span><h3>Indicador M1</h3><p>Indicador da equipe multiprofissional conforme Nota Metodológica M1.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
-          <article class="catalog-card"><span class="catalog-code">M2</span><h3>Indicador M2</h3><p>Indicador da equipe multiprofissional conforme Nota Metodológica M2.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card catalog-clickable" role="button" tabindex="0" data-indicator="CVAT"><span class="catalog-code">CVAT</span><h3>Vínculo e Acompanhamento Territorial</h3><p>Cadastro individual e domiciliar, pessoas acompanhadas, públicos prioritários, satisfação e vínculo com a equipe.</p><span class="catalog-state">CSV agregado reconhecido</span></article>
+          <article class="catalog-card catalog-clickable" role="button" tabindex="0" data-indicator="C1"><span class="catalog-code">C1</span><h3>Mais acesso</h3><p>Acesso e oferta de atendimentos na Atenção Primária.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card catalog-clickable" role="button" tabindex="0" data-indicator="C2"><span class="catalog-code">C2</span><h3>Desenvolvimento infantil</h3><p>Acompanhamento da saúde e desenvolvimento das crianças.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card catalog-clickable" role="button" tabindex="0" data-indicator="C3"><span class="catalog-code">C3</span><h3>Gestação e puerpério</h3><p>Pré-natal, exames, visitas, puerpério e saúde bucal.</p><span class="catalog-state">CSV agregado reconhecido</span></article>
+          <article class="catalog-card catalog-clickable" role="button" tabindex="0" data-indicator="C4"><span class="catalog-code">C4</span><h3>Cuidado da pessoa com diabetes</h3><p>Acompanhamento clínico e práticas de cuidado para diabetes.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card catalog-clickable" role="button" tabindex="0" data-indicator="C5"><span class="catalog-code">C5</span><h3>Cuidado da pessoa com hipertensão</h3><p>Acompanhamento e controle da hipertensão.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card catalog-clickable" role="button" tabindex="0" data-indicator="C6"><span class="catalog-code">C6</span><h3>Cuidado da pessoa idosa</h3><p>Acompanhamento integral da pessoa idosa.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card catalog-clickable" role="button" tabindex="0" data-indicator="C7"><span class="catalog-code">C7</span><h3>Prevenção do câncer na mulher</h3><p>Ações de rastreamento e cuidado da saúde da mulher.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card catalog-clickable" role="button" tabindex="0" data-indicator="B1"><span class="catalog-code">B1</span><h3>Primeira consulta odontológica programada</h3><p>Acesso ao cuidado odontológico programado.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card catalog-clickable" role="button" tabindex="0" data-indicator="B2"><span class="catalog-code">B2</span><h3>Tratamento odontológico concluído</h3><p>Continuidade e conclusão dos tratamentos iniciados.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card catalog-clickable" role="button" tabindex="0" data-indicator="B3"><span class="catalog-code">B3</span><h3>Taxa de exodontia</h3><p>Monitoramento de exodontias nos atendimentos odontológicos.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card catalog-clickable" role="button" tabindex="0" data-indicator="B4"><span class="catalog-code">B4</span><h3>Escovação supervisionada</h3><p>Ações coletivas de escovação supervisionada.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card catalog-clickable" role="button" tabindex="0" data-indicator="B5"><span class="catalog-code">B5</span><h3>Procedimentos odontológicos preventivos</h3><p>Procedimentos de prevenção em saúde bucal.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card catalog-clickable" role="button" tabindex="0" data-indicator="B6"><span class="catalog-code">B6</span><h3>Tratamento restaurador atraumático</h3><p>Ações de tratamento restaurador atraumático.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card catalog-clickable" role="button" tabindex="0" data-indicator="M1"><span class="catalog-code">M1</span><h3>Indicador M1</h3><p>Indicador da equipe multiprofissional conforme Nota Metodológica M1.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
+          <article class="catalog-card catalog-clickable" role="button" tabindex="0" data-indicator="M2"><span class="catalog-code">M2</span><h3>Indicador M2</h3><p>Indicador da equipe multiprofissional conforme Nota Metodológica M2.</p><span class="catalog-state pending">Aguardando relatório de exemplo</span></article>
         </div>
         <div class="notice"><strong>Escopo desta versão:</strong> CVAT e C3 possuem leitura agregada no importador. Os demais indicadores já aparecem no catálogo, mas a apuração e as listas de pessoas serão ativadas conforme validarmos o CSV SIAPS e a exportação nominal do PEC de cada tema contra sua nota metodológica. Arquivos pessoais não devem ser publicados no GitHub.</div>
       </div>
@@ -569,6 +571,7 @@
           '<h3 style="margin-top:22px">Lista nominal para conferência</h3><div class="table-wrap"><table><thead><tr><th>Pessoa</th><th>Prática a conferir</th><th>Valor no PEC</th><th>Próximo passo</th></tr></thead><tbody>'+list+'</tbody></table></div>'+
           '<div class="notice"><strong>Conferência necessária:</strong> o SIAPS é agregado por equipe; o PEC fornece campos nominais. Um campo abaixo do critério não confirma atraso nem elegibilidade. Considere trimestre, idade gestacional, puerpério e período da nota antes de agir. Dados permanecem neste navegador.</div><div class="reset-row"><button class="text-button" type="button" data-reset>Limpar análise</button></div>';
         results.style.display='block';setMessage('Os dois relatórios foram lidos e associados pelo INE da equipe. Revise os campos no prontuário antes de qualquer busca ativa.','info');
+        resultsCache.C3 = results.innerHTML;
       }
       function renderGenericPair(siapsText,pecText,indicator) {
         var sr=parseCsv(siapsText),pr=parseCsv(pecText);
@@ -588,6 +591,7 @@
           (team?'<h3>Valores do SIAPS para a equipe</h3><div class="table-wrap"><table><thead><tr><th>Campo do relatório</th><th>Valor</th></tr></thead><tbody>'+metricRows+'</tbody></table></div>':'<div class="notice">Não encontrei automaticamente a linha da equipe no SIAPS. Confira se os dois arquivos são da mesma equipe e se o relatório contém o INE.</div>')+
           '<div class="notice"><strong>Leitura estruturada:</strong> os arquivos foram lidos e os campos organizados. A apuração oficial, a identificação de pendências nominais e a pontuação deste módulo precisam seguir as regras e os campos específicos da nota metodológica; este resultado bruto não substitui essa validação.</div><div class="reset-row"><button class="text-button" type="button" data-reset>Limpar análise</button></div>';
         results.style.display='block';setMessage('Arquivos lidos para '+indicator+' · '+(indicatorNames[indicator]||'indicador selecionado')+'. Dados exibidos como leitura estruturada.', 'info');
+        resultsCache[indicator] = results.innerHTML;
       }
       function analyze(text) {
         var rows = parseCsv(text);
@@ -610,6 +614,7 @@
         }
       }
       var loadedReports = { siaps:'', pec:'' };
+      var resultsCache = {};
       function readReport(file, type) {
         if (!file) return;
         if (!/\\.csv$/i.test(file.name) && file.type !== 'text/csv') {
@@ -636,6 +641,26 @@
         reader.onerror=function(){setMessage('Não foi possível abrir o arquivo selecionado.','error');};
         reader.readAsArrayBuffer(file);
       }
+      function openIndicatorFromCatalog(card) {
+        var code=card.getAttribute('data-indicator');
+        var choice=document.querySelector('.indicator-choice[data-indicator="'+code+'"]');
+        if(choice) choice.click();
+        if(resultsCache[code]) {
+          results.innerHTML=resultsCache[code];
+          results.style.display='block';
+          setMessage('Resultado anterior de '+code+' aberto nesta sessão.','info');
+        }
+        document.getElementById('importar').scrollIntoView({behavior:'smooth',block:'start'});
+      }
+      document.querySelector('.catalog-grid').addEventListener('click',function(event){
+        var card=event.target.closest('[data-indicator]');
+        if(card) openIndicatorFromCatalog(card);
+      });
+      document.querySelector('.catalog-grid').addEventListener('keydown',function(event){
+        if((event.key==='Enter'||event.key===' ')&&event.target.matches('[data-indicator]')){
+          event.preventDefault();openIndicatorFromCatalog(event.target);
+        }
+      });
       document.getElementById('indicator-picker').addEventListener('click',function(event){
         var button=event.target.closest('[data-indicator]');if(!button)return;
         selectedIndicator=button.getAttribute('data-indicator');
