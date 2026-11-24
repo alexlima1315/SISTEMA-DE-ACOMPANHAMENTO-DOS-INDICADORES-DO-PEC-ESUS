@@ -114,6 +114,9 @@
     .benefit-row:nth-child(3) .benefit-icon { color:var(--green); background:var(--green-soft); }
     .benefit-icon svg { width:22px; height:22px; }
     .benefit-note { margin:30px 0 0; text-align:center; font-weight:750; }
+    .indicator-picker { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin:18px 0; text-align:left; }
+    .indicator-choice { min-height:42px; padding:9px 12px; border:1px solid var(--line); border-radius:11px; color:var(--ink); background:#fff; font-size:12px; font-weight:700; text-align:left; cursor:pointer; }
+    .indicator-choice:hover,.indicator-choice.active { border-color:var(--blue); color:var(--blue-dark); background:var(--blue-soft); }
     .catalog-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
     .catalog-card { padding:20px; border:1px solid var(--line); border-radius:15px; background:#fff; }
     .catalog-code { display:inline-grid; min-width:40px; height:28px; place-items:center; padding:0 8px; border-radius:9px; color:var(--blue-dark); background:var(--blue-soft); font-size:12px; font-weight:900; }
@@ -121,8 +124,8 @@
     .catalog-card p { min-height:44px; margin:0 0 13px; color:var(--muted); font-size:13px; }
     .catalog-state { display:inline-block; padding:5px 8px; border-radius:99px; color:var(--green); background:var(--green-soft); font-size:10px; font-weight:800; }
     .catalog-state.pending { color:#775b19; background:#fff5db; }
-    @media (max-width:850px) { .catalog-grid { grid-template-columns:repeat(2,1fr); } }
-    @media (max-width:600px) { .catalog-grid { grid-template-columns:1fr; } .catalog-card p { min-height:0; } }
+    @media (max-width:850px) { .indicator-picker { grid-template-columns:repeat(2,1fr); } .catalog-grid { grid-template-columns:repeat(2,1fr); } }
+    @media (max-width:600px) { .indicator-picker { grid-template-columns:1fr; } .catalog-grid { grid-template-columns:1fr; } .catalog-card p { min-height:0; } }
     .panel-shell { overflow:hidden; border:1px solid var(--line); border-radius:22px; background:#fff; box-shadow:var(--shadow); }
     .panel-head { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; padding:25px 27px; border-bottom:1px solid var(--line); }
     .panel-head h2 { font-size:25px; }
@@ -326,12 +329,25 @@
             <span class="local-badge">Processamento local</span>
           </div>
           <div class="upload-area" id="drop-area">
-            <span class="upload-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 15V3m0 0L8 7m4-4 4 4M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <h3>Selecione os dois relatórios da mesma equipe e competência</h3>
-            <p>CSV do SIAPS “Visão por Competência” e CSV do PEC “Acompanhamento de Condições de Saúde”.</p>
+            <h3>1. Escolha o indicador que deseja analisar</h3>
+            <p>O indicador selecionado orienta a leitura dos dois arquivos enviados.</p>
+            <div class="indicator-picker" id="indicator-picker" role="group" aria-label="Escolha do indicador">
+              <button type="button" class="indicator-choice" data-indicator="CVAT">CVAT · Vínculo e Acompanhamento</button>
+              <button type="button" class="indicator-choice" data-indicator="C1">C1 · Mais acesso</button><button type="button" class="indicator-choice" data-indicator="C2">C2 · Desenvolvimento infantil</button>
+              <button type="button" class="indicator-choice" data-indicator="C3">C3 · Gestação e puerpério</button><button type="button" class="indicator-choice" data-indicator="C4">C4 · Diabetes</button>
+              <button type="button" class="indicator-choice" data-indicator="C5">C5 · Hipertensão</button><button type="button" class="indicator-choice" data-indicator="C6">C6 · Pessoa idosa</button>
+              <button type="button" class="indicator-choice" data-indicator="C7">C7 · Prevenção do câncer</button><button type="button" class="indicator-choice" data-indicator="B1">B1 · 1ª consulta odontológica</button>
+              <button type="button" class="indicator-choice" data-indicator="B2">B2 · Tratamento concluído</button><button type="button" class="indicator-choice" data-indicator="B3">B3 · Taxa de exodontia</button>
+              <button type="button" class="indicator-choice" data-indicator="B4">B4 · Escovação supervisionada</button><button type="button" class="indicator-choice" data-indicator="B5">B5 · Procedimentos preventivos</button>
+              <button type="button" class="indicator-choice" data-indicator="B6">B6 · Tratamento restaurador atraumático</button><button type="button" class="indicator-choice" data-indicator="M1">M1 · Média de atendimentos eMulti</button>
+              <button type="button" class="indicator-choice" data-indicator="M2">M2 · Indicador eMulti</button>
+            </div>
+            <div id="selected-indicator-label" class="upload-hint">Nenhum indicador selecionado</div>
+            <h3 style="margin-top:22px">2. Envie os dois arquivos CSV</h3>
+            <p>Um arquivo do SIAPS e outro do PEC, referentes à mesma equipe e período.</p>
             <label class="file-trigger" for="file-input">Escolher os 2 arquivos CSV</label>
             <input id="file-input" type="file" accept=".csv,text/csv" aria-label="Selecionar os CSVs do SIAPS e do PEC" multiple>
-            <div class="upload-hint">O cruzamento pelo INE é feito somente neste navegador. Os arquivos não são enviados nem armazenados.</div>
+            <div class="upload-hint">Leitura local no navegador. Não envie planilhas com dados pessoais ao GitHub.</div>
           </div>
           <div id="message" class="message" role="status" aria-live="polite"></div>
           <div id="results" class="results"></div>
@@ -350,7 +366,7 @@
       var input = document.getElementById('file-input');
       var area = document.getElementById('drop-area');
       var message = document.getElementById('message');
-      var results = document.getElementById('results');
+      var results = document.getElementById('results');\n      var selectedIndicator = '';\n      var indicatorLabel = document.getElementById('selected-indicator-label');
 
       function normalize(value) {
         return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[-–—_/()[\].,;:]+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -544,6 +560,25 @@
           '<div class="notice"><strong>Conferência necessária:</strong> o SIAPS é agregado por equipe; o PEC fornece campos nominais. Um campo abaixo do critério não confirma atraso nem elegibilidade. Considere trimestre, idade gestacional, puerpério e período da nota antes de agir. Dados permanecem neste navegador.</div><div class="reset-row"><button class="text-button" type="button" data-reset>Limpar análise</button></div>';
         results.style.display='block';setMessage('Os dois relatórios foram lidos e associados pelo INE da equipe. Revise os campos no prontuário antes de qualquer busca ativa.','info');
       }
+      function renderGenericPair(siapsText,pecText,indicator) {
+        var sr=parseCsv(siapsText),pr=parseCsv(pecText);
+        var hAt=sr.findIndex(function(r){var x=normalize(r.join(' '));return x.indexOf('INE')>=0&&r.length>=4&&x.indexOf('EQUIPE')>=0;});
+        var h=hAt>=0?sr[hAt].map(normalize):[], ineCol=h.findIndex(function(x){return x==='INE';});
+        var teamValue=valueFor(pr,function(x){return x.indexOf('EQUIPE RESPONSAVEL')===0;});
+        var m=String(teamValue).match(/\b\d{7,10}\b/), ine=m?m[0].replace(/^0+/,''):'';
+        var data=hAt>=0?sr.slice(hAt+1).filter(function(r){return r.length>=h.length;}):[];
+        var team=ineCol>=0&&ine?data.find(function(r){return String(r[ineCol]||'').replace(/^0+/,'').trim()===ine;}):null;
+        var ph=pr.findIndex(function(r){var x=normalize(r.join(' '));return x.indexOf('NOME')>=0&&x.indexOf('DATA DE NASCIMENTO')>=0;});
+        var people=ph>=0?pr.slice(ph+1).filter(function(r){return r.length>=4&&r[0]&&normalize(r[0])!=='NOME';}):[];
+        var indicatorNames={CVAT:'Vínculo e Acompanhamento Territorial',C1:'Mais acesso',C2:'Desenvolvimento infantil',C3:'Gestação e puerpério',C4:'Pessoa com diabetes',C5:'Pessoa com hipertensão',C6:'Pessoa idosa',C7:'Prevenção do câncer na mulher',B1:'Primeira consulta odontológica',B2:'Tratamento odontológico concluído',B3:'Taxa de exodontia',B4:'Escovação supervisionada',B5:'Procedimentos odontológicos preventivos',B6:'Tratamento restaurador atraumático',M1:'Média de atendimentos por pessoa pela eMulti',M2:'Indicador M2 eMulti'};
+        var vals=team&&h.length?team.map(function(v,i){return {label:sr[hAt][i]||('Coluna '+(i+1)),value:v};}).filter(function(x,i){return i>4&&String(x.value||'').trim()!=='';}):[];
+        var metricRows=vals.map(function(x){return '<tr><td>'+escapeHtml(x.label)+'</td><td class="num">'+escapeHtml(x.value)+'</td></tr>';}).join('');
+        results.innerHTML='<div class="result-context">'+chip('Indicador',indicator+' · '+indicatorNames[indicator])+chip('Equipe',team?(team[4]||'identificada pelo INE'):'não identificada automaticamente')+chip('INE',teamValue||'não informado')+'</div>'+
+          '<div class="metrics"><div class="metric"><span>Linhas nominais PEC</span><strong>'+formatNumber(people.length)+'</strong><span>registros encontrados</span></div><div class="metric"><span>Campos na lista PEC</span><strong>'+formatNumber(ph>=0?pr[ph].length:0)+'</strong><span>colunas detectadas</span></div><div class="metric"><span>Indicador selecionado</span><strong>'+indicator+'</strong><span>'+escapeHtml(indicatorNames[indicator]||'')+'</span></div></div>'+
+          (team?'<h3>Valores do SIAPS para a equipe</h3><div class="table-wrap"><table><thead><tr><th>Campo do relatório</th><th>Valor</th></tr></thead><tbody>'+metricRows+'</tbody></table></div>':'<div class="notice">Não encontrei automaticamente a linha da equipe no SIAPS. Confira se os dois arquivos são da mesma equipe e se o relatório contém o INE.</div>')+
+          '<div class="notice"><strong>Leitura estruturada:</strong> os arquivos foram lidos e os campos organizados. A apuração oficial, a identificação de pendências nominais e a pontuação deste módulo precisam seguir as regras e os campos específicos da nota metodológica; este resultado bruto não substitui essa validação.</div><div class="reset-row"><button class="text-button" type="button" data-reset>Limpar análise</button></div>';
+        results.style.display='block';setMessage('Arquivos lidos para '+indicator+' · '+(indicatorNames[indicator]||'indicador selecionado')+'. Dados exibidos como leitura estruturada.', 'info');
+      }
       function analyze(text) {
         var rows = parseCsv(text);
         var all = normalize(rows.map(function (r) { return r.join(' '); }).join(' '));
@@ -578,9 +613,15 @@
           var si=txt.find(function(t){return normalize(t).indexOf('RELATORIO QUALIDADE - VISAO POR COMPETENCIA')>=0;});
           var pe=txt.find(function(t){return normalize(t).indexOf('ACOMPANHAMENTO DE CONDICOES DE SAUDE')>=0;});
           if(!si||!pe)throw new Error('Não identifiquei ambos os relatórios. Use o SIAPS “Relatório Qualidade - Visão por Competência” e o PEC “Acompanhamento de Condições de Saúde”.');
-          renderC3Pair(si,pe);
+          if(!selectedIndicator) throw new Error('Selecione um indicador antes de enviar os arquivos.');\n          if(selectedIndicator==='C3') renderC3Pair(si,pe); else renderGenericPair(si,pe,selectedIndicator);
         }).catch(function(e){results.style.display='none';results.innerHTML='';setMessage(e.message||'Erro ao ler os arquivos.','error');});
       }
+      document.getElementById('indicator-picker').addEventListener('click',function(event){
+        var button=event.target.closest('[data-indicator]');if(!button)return;
+        selectedIndicator=button.getAttribute('data-indicator');
+        document.querySelectorAll('.indicator-choice').forEach(function(b){b.classList.toggle('active',b===button);});
+        indicatorLabel.textContent='Selecionado: '+button.textContent+'. Agora envie os arquivos SIAPS e PEC.';
+      });
       input.addEventListener('change', function () { loadFiles(input.files); });
       area.addEventListener('dragover', function (event) { event.preventDefault(); area.classList.add('drag'); });
       area.addEventListener('dragleave', function () { area.classList.remove('drag'); });
