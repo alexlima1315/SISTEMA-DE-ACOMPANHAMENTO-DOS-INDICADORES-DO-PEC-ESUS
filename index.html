@@ -648,9 +648,17 @@
       area.addEventListener('dragleave', function () { area.classList.remove('drag'); });
       area.addEventListener('drop', function (event) { event.preventDefault(); area.classList.remove('drag'); setMessage('Use os botões separados para escolher o CSV do SIAPS e o CSV do PEC.','info'); });
       results.addEventListener('click', function (event) {
-        if (event.target && event.target.matches('[data-reset]')) {
-          input.value = ''; results.innerHTML = ''; results.style.display = 'none';
-          message.className = 'message'; message.textContent = '';
+        if (event.target && event.target.closest('[data-reset]')) {
+          document.getElementById('siaps-input').value = '';
+          document.getElementById('pec-input').value = '';
+          document.getElementById('siaps-file-name').textContent = 'Nenhum arquivo escolhido';
+          document.getElementById('pec-file-name').textContent = 'Nenhum arquivo escolhido';
+          loadedReports.siaps = '';
+          loadedReports.pec = '';
+          results.innerHTML = '';
+          results.style.display = 'none';
+          message.className = 'message';
+          message.textContent = '';
         }
       });
     })();
