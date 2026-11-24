@@ -735,7 +735,8 @@
         return view.length?view.map(function(person){
           var d=person.details||{},seen=Object.create(null),selected=person.findings.filter(function(entry){return !state.filter||state.filter==='all'||cvatCategory(entry.item.issue)===state.filter;});
           var issues=selected.map(function(entry){var key=normalize(entry.item.issue);if(seen[key])return '';seen[key]=true;return '<li>'+escapeHtml(entry.item.issue)+'</li>';}).filter(Boolean).join('');
-          var personal=[d.sex,d.age,d.dob?'Nascimento: '+d.dob:'',d.phonePresent?'Telefone informado':'Telefone não localizado'].filter(Boolean).join(' · ');
+          var birthDate=parseDate(d.dob),ageYears=null;if(birthDate){var today=new Date();ageYears=today.getFullYear()-birthDate.getFullYear();if(today.getMonth()<birthDate.getMonth()||(today.getMonth()===birthDate.getMonth()&&today.getDate()<birthDate.getDate()))ageYears--;}
+          var personal=[ageYears==null?'':'Idade: '+ageYears+' anos',d.dob?'Nascimento: '+d.dob:'',d.phonePresent?'Telefone informado':'Telefone não localizado'].filter(Boolean).join(' · ');
           var identifiers='CPF: '+(d.cpfPresent?'informado':'ausente')+'<br>CNS: '+(d.cnsPresent?(d.cnsNeedsCheck?'conferir':'informado'):'ausente');
           var unit=[d.unit||'Unidade não identificada no PDF',d.microarea?'MA '+d.microarea:'MA não informada no PDF'].join(' · ');
           var period=d.monthsSince==null?'Data de atualização não identificada':d.monthsSince+' '+(d.monthsSince===1?'mês':'meses')+(d.updated?' · atualizado em '+d.updated:'');
