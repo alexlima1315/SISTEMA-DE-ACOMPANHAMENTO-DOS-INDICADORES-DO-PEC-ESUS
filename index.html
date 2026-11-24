@@ -704,21 +704,21 @@
       }
       function cvatCorrectionFor(x){
         var issue=normalize(x.issue);
-        if(issue.indexOf('CPF')>=0)return 'Conferir o documento e atualizar o CPF no cadastro individual; sincronizar/validar no CadSUS.';
-        if(issue.indexOf('CNS')>=0)return 'Consultar o CNS principal no CadSUS e atualizar o cadastro no PEC após confirmação.';
-        if(issue.indexOf('DUPLICADO')>=0)return 'Conferir os dados no prontuário; se duplicidade confirmada, regularizar o cadastro no PEC conforme o fluxo da unidade.';
-        if(issue.indexOf('VINCULO')>=0||issue.indexOf('UBS')>=0)return 'Conferir território e equipe responsável; vincular à UBS/equipe correta no cadastro individual.';
-        if(issue.indexOf('DOMICILIAR')>=0)return 'Atualizar o cadastro domiciliar e territorial, conferindo domicílio, endereço, moradores e microárea.';
-        if(issue.indexOf('INDIVIDUAL')>=0||issue.indexOf('NASCIMENTO')>=0||issue.indexOf('MAE')>=0)return 'Revisar e atualizar os dados do cadastro individual no PEC.';
-        if(issue.indexOf('TELEFONE')>=0)return 'Confirmar com a pessoa e registrar telefone celular atualizado no cadastro.';
-        return 'Conferir o prontuário e corrigir o campo cadastral correspondente no PEC.';
+        if(issue.indexOf('CPF')>=0)return 'Conferir no PEC se alguma informação está ausente; se estiver, atualizar o cadastro individual ou domiciliar correspondente.';
+        if(issue.indexOf('CNS')>=0)return 'Conferir no PEC se alguma informação está ausente; se estiver, atualizar o cadastro individual ou domiciliar correspondente.';
+        if(issue.indexOf('DUPLICADO')>=0)return 'Conferir no PEC se alguma informação está ausente; se estiver, atualizar o cadastro individual ou domiciliar correspondente.';
+        if(issue.indexOf('VINCULO')>=0||issue.indexOf('UBS')>=0)return 'Conferir no PEC se alguma informação está ausente; se estiver, atualizar o cadastro individual ou domiciliar correspondente.';
+        if(issue.indexOf('DOMICILIAR')>=0)return 'Conferir no PEC se alguma informação está ausente; se estiver, atualizar o cadastro individual ou domiciliar correspondente.';
+        if(issue.indexOf('INDIVIDUAL')>=0||issue.indexOf('NASCIMENTO')>=0||issue.indexOf('MAE')>=0)return 'Conferir no PEC se alguma informação está ausente; se estiver, atualizar o cadastro individual ou domiciliar correspondente.';
+        if(issue.indexOf('TELEFONE')>=0)return 'Conferir no PEC se alguma informação está ausente; se estiver, atualizar o cadastro individual ou domiciliar correspondente.';
+        return 'Conferir no PEC se alguma informação está ausente; se estiver, atualizar o cadastro individual ou domiciliar correspondente.';
       }
       function cvatCounts(state){
         var counts={all:state.findings.length,cpf:0,cns:0,duplicate:0,link:0,stale:0,missing:0};
         state.findings.forEach(function(x){counts[cvatCategory(x.issue)]++;});return counts;
       }
       function cvatPageRows(state){
-        var rows=state.findings.filter(function(x){return state.filter==='all'||cvatCategory(x.issue)===state.filter;});
+        var rows=state.findings.filter(function(x){return !state.filter||state.filter==='all'||cvatCategory(x.issue)===state.filter;});
         var pages=Math.max(1,Math.ceil(rows.length/state.pageSize)),start=(state.page-1)*state.pageSize;
         var view=rows.slice(start,start+state.pageSize);
         return view.length?view.map(function(x){var i=state.findings.indexOf(x);return '<tr><td>'+escapeHtml(x.name)+'</td><td>'+escapeHtml(x.issue)+'</td><td><button type="button" class="file-trigger" data-cvat-action="'+i+'">Ação necessária</button><div class="notice" data-cvat-action-detail hidden>'+escapeHtml(cvatCorrectionFor(x))+'</div></td></tr>';}).join(''):'<tr><td colspan="3">Nenhuma observação nesta categoria.</td></tr>';
@@ -726,7 +726,7 @@
       function refreshCvatPagination(){
         if(!cvatReviewState)return;
         var state=cvatReviewState,counts=cvatCounts(state);
-        var filtered=state.findings.filter(function(x){return state.filter==='all'||cvatCategory(x.issue)===state.filter;});
+        var filtered=state.findings.filter(function(x){return !state.filter||state.filter==='all'||cvatCategory(x.issue)===state.filter;});
         var pages=Math.max(1,Math.ceil(filtered.length/state.pageSize));
         state.page=Math.max(1,Math.min(state.page,pages));
         var body=results.querySelector('[data-cvat-findings]');
@@ -770,7 +770,7 @@
         people.forEach(function(p){
           var cpf=cpfIx>=0?String(p[cpfIx]||'').trim():'';
           var cpfDigits=digits(cpf),cns=cnsIx>=0?digits(p[cnsIx]):'';
-          if(cpfDigits&&(cpfDigits.length!==11||!validCpf(cpf))){add(p,'CPF preenchido — conferir dígitos','O arquivo contém um CPF; conferir formatação e validar no CadSUS.');}
+          
           if(cnsIx>=0&&cns&&(!/^7/.test(cns)||cns.length!==15))add(p,'CNS para conferência',cns.length!==15?'Quantidade de dígitos do CNS fora do padrão; conferir no CadSUS':!/^7/.test(cns)?'Possível CNS anterior; confirmar o CNS principal no CadSUS':'Conferir CNS no CadSUS');
           if(!cpfDigits&&!cns)add(p,'CPF/CNS ausentes','Não foi encontrado CPF ou CNS nesta linha do arquivo; conferir o cadastro no PEC.');
           if(dobIx>=0&&!String(p[dobIx]||'').trim())add(p,'Data de nascimento ausente','Conferir identificação do cidadão no cadastro');
@@ -788,8 +788,8 @@
         Object.keys(dupGroups).forEach(function(k){var group=dupGroups[k];if(group.length>1){var kind=k.split(':')[0],names=group.map(function(p){return String(p[nameIx]||'').trim();});duplicateRows.push('<tr><td>'+escapeHtml(kind==='CPF'?'CPF repetido':kind==='CNS'?'CNS repetido':'Mesmo nome e nascimento')+'</td><td>'+escapeHtml(names.join(' · '))+'</td><td>Conferir os identificadores e regularizar o cadastro duplicado no PEC, se confirmado.</td><td><span class="status">Confirmar antes de corrigir</span></td></tr>');group.forEach(function(p){add(p,'Possível cadastro duplicado',kind==='CPF'?'CPF repetido na lista':kind==='CNS'?'CNS repetido na lista':'Nome e data de nascimento repetidos');});}});
         cvatReviewState={findings:findings,filter:'all',page:1,pageSize:25};
         var counts=cvatCounts(cvatReviewState);
-        var categories=[['all','Todas as observações'],['cpf','CPF ausente/inconsistente'],['cns','CNS para conferência'],['duplicate','Possíveis duplicidades'],['link','Vínculo UBS/equipe'],['stale','Cadastro desatualizado'],['missing','Outros dados faltantes']];
-        var options=categories.map(function(x){return '<option value="'+x[0]+'">'+escapeHtml(x[1])+' ('+counts[x[0]]+')</option>';}).join('');
+        var categories=[['cpf','CPF ausente/inconsistente'],['cns','CNS para conferência'],['duplicate','Possíveis duplicidades'],['link','Vínculo UBS/equipe'],['stale','Cadastro desatualizado'],['missing','Outros dados faltantes']].filter(function(x){return counts[x[0]]>0;});
+        var options='<option value="" selected>Filtrar por tipo (lista completa inicialmente)</option>'+categories.map(function(x){return '<option value="'+x[0]+'">'+escapeHtml(x[1])+' ('+counts[x[0]]+')</option>';}).join('');
         var pages=Math.max(1,Math.ceil(findings.length/cvatReviewState.pageSize));
         var pageLabel='Página 1 de '+pages+' · '+findings.length+' observações';
         var linkNote=linkIx<0?'<div class="notice"><strong>Vínculo nominal:</strong> este CSV não contém coluna de UBS/INE por pessoa. O relatório agregado identifica a equipe, mas não permite apontar quem está sem vínculo. Exporte uma lista nominal com equipe/unidade responsável.</div>':'';
