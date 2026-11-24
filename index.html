@@ -158,6 +158,12 @@
     .metric strong { display:block; margin-top:6px; font-size:25px; letter-spacing:-.04em; }
     .metric.score { background:linear-gradient(135deg,#eaf6f8,#f8fbfc); border-color:#d6e9ed; }
     .table-wrap { overflow-x:auto; border:1px solid var(--line); border-radius:15px; }
+    .cvat-pagination { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:12px 0; padding:12px; border:1px solid var(--line); border-radius:12px; background:#f8fbfc; font-size:13px; }
+    .cvat-pagination label { font-weight:700; }
+    .cvat-pagination select { min-height:38px; padding:0 10px; border:1px solid var(--line); border-radius:9px; color:var(--ink); background:#fff; }
+    .cvat-pagination [data-cvat-page-label] { color:var(--muted); margin:0 auto; }
+    .cvat-pagination button:disabled { opacity:.45; cursor:not-allowed; }
+    @media (max-width:600px) { .cvat-pagination { gap:7px; } .cvat-pagination [data-cvat-page-label] { order:5; width:100%; margin:0; text-align:center; } }
     table { width:100%; border-collapse:collapse; text-align:left; font-size:13px; }
     th { padding:12px 14px; color:#607284; background:#f5f9fa; font-size:11px; letter-spacing:.04em; text-transform:uppercase; }
     td { padding:13px 14px; border-top:1px solid #edf3f5; vertical-align:middle; }
@@ -501,7 +507,7 @@
           var missing = Math.max(0, denominator - p.achieved);
           return '<tr><td>' + escapeHtml(p.name) + '</td><td class="num">' + formatNumber(p.achieved) + ' de ' + formatNumber(denominator) + '</td><td class="num">' + formatNumber(rate, 1) + '%</td><td class="num">' + p.points + ' pontos por pessoa</td><td><span class="status">' + formatNumber(missing) + ' sem registro computado</span></td></tr>';
         }).join('');
-        results.innerHTML = '<div class="result-context">' + chip('Indicador', context.indicator || 'Cuidado na Gestação e Puerpério') + chip('Equipe', context.team||teamRef) + chip('Competência', context.competence) + '</div>' +
+        results.innerHTML = '<div class="result-context">' + chip('Indicador', context.indicator || 'Cuidado na Gestação e Puerpério') + chip('Unidade/Equipe', context.team||teamRef) + chip('INE',ineFromRows(rows)||ineFromRows(pecRows||[])) + chip('Competência', context.competence) + '</div>' +
           '<div class="metrics"><div class="metric score"><span>Resultado médio</span><strong>' + formatNumber(score, 2) + '%</strong><span class="status">' + classificationC3(score) + '</span></div><div class="metric"><span>Numerador</span><strong>' + formatNumber(numerator) + '</strong><span>pontos de boas práticas</span></div><div class="metric"><span>Denominador</span><strong>' + formatNumber(denominator) + '</strong><span>gestantes e puérperas</span></div></div>' +
           '<div class="table-wrap"><table><thead><tr><th>Boa prática</th><th>Pessoas contabilizadas</th><th>Cobertura no denominador</th><th>Peso</th><th>Leitura do arquivo</th></tr></thead><tbody>' + rowsHtml + '</tbody></table></div>' +
           '<div class="notice"><strong>Conferência do cálculo:</strong> ' + (aligned ? 'o numerador confere com a soma das práticas e seus pesos.' : 'a soma das práticas não confere com o numerador informado; confira competência, atualização e versão da nota técnica.') + (reportedScore !== null && Math.abs(reportedScore - score) > 0.02 ? ' A razão do CSV também diverge do recálculo.' : '') + '<br><br><strong>Interpretação:</strong> “sem registro computado” é uma diferença agregada, não uma pendência individual confirmada. A prática pode depender da idade gestacional ou do período puerperal; valide a situação no prontuário antes de planejar busca ativa.</div>' +
@@ -563,6 +569,7 @@
           '<div class="notice"><strong>Leitura responsável:</strong> as variáveis do SIAPS são agregadas por equipe. A lista abaixo usa o arquivo nominal do PEC e mostra a pessoa, o campo detectado e a correção sugerida.</div>' + (pecRows ? renderCvatReview(pecRows, teamRef||context.team, rows) : '') +
           '<div class="reset-row"><button class="text-button" type="button" data-reset>Limpar análise</button></div>';
         results.style.display = 'block';
+        refreshCvatPagination();
         resultsCache.CVAT=results.innerHTML;
         setMessage('Relatórios CVAT + PEC lidos. Confira cada pessoa e a correção sugerida antes de atualizar o cadastro.', 'info');
       }
@@ -651,12 +658,60 @@
         return '<h3>O que a Nota '+indicator+' avalia</h3><div class="notice"><strong>Regra de cálculo:</strong> '+escapeHtml(spec.formula)+(spec.classification?'<br><strong>Faixas de classificação:</strong> '+escapeHtml(spec.classification):'')+'</div><div class="table-wrap"><table><thead><tr><th>Critério oficial resumido</th></tr></thead><tbody>'+spec.criteria.map(function(x){return '<tr><td>'+escapeHtml(x)+'</td></tr>';}).join('')+'</tbody></table></div><div class="notice"><strong>Sugestão de trabalho:</strong> '+escapeHtml(spec.advice)+'</div>';
       }
 
+      var cvatReviewState=null;
+      function cvatCategory(issue){
+        var x=normalize(issue);
+        if(x.indexOf('CPF')>=0)return 'cpf';
+        if(x.indexOf('CNS')>=0)return 'cns';
+        if(x.indexOf('DUPLICADO')>=0)return 'duplicate';
+        if(x.indexOf('VINCULO')>=0||x.indexOf('UBS')>=0)return 'link';
+        if(x.indexOf('DESATUALIZADO')>=0||x.indexOf('ATUALIZACAO')>=0)return 'stale';
+        return 'missing';
+      }
+      function cvatCorrectionFor(x){
+        var issue=normalize(x.issue);
+        if(issue.indexOf('CPF')>=0)return 'Conferir o documento e atualizar o CPF no cadastro individual; sincronizar/validar no CadSUS.';
+        if(issue.indexOf('CNS')>=0)return 'Consultar o CNS principal no CadSUS e atualizar o cadastro no PEC após confirmação.';
+        if(issue.indexOf('DUPLICADO')>=0)return 'Conferir os dados no prontuário; se duplicidade confirmada, regularizar o cadastro no PEC conforme o fluxo da unidade.';
+        if(issue.indexOf('VINCULO')>=0||issue.indexOf('UBS')>=0)return 'Conferir território e equipe responsável; vincular à UBS/equipe correta no cadastro individual.';
+        if(issue.indexOf('DOMICILIAR')>=0)return 'Atualizar o cadastro domiciliar e territorial, conferindo domicílio, endereço, moradores e microárea.';
+        if(issue.indexOf('INDIVIDUAL')>=0||issue.indexOf('NASCIMENTO')>=0||issue.indexOf('MAE')>=0)return 'Revisar e atualizar os dados do cadastro individual no PEC.';
+        if(issue.indexOf('TELEFONE')>=0)return 'Confirmar com a pessoa e registrar telefone celular atualizado no cadastro.';
+        return 'Conferir o prontuário e corrigir o campo cadastral correspondente no PEC.';
+      }
+      function cvatCounts(state){
+        var counts={all:state.findings.length,cpf:0,cns:0,duplicate:0,link:0,stale:0,missing:0};
+        state.findings.forEach(function(x){counts[cvatCategory(x.issue)]++;});return counts;
+      }
+      function cvatPageRows(state){
+        var rows=state.findings.filter(function(x){return state.filter==='all'||cvatCategory(x.issue)===state.filter;});
+        var pages=Math.max(1,Math.ceil(rows.length/state.pageSize)),start=(state.page-1)*state.pageSize;
+        var view=rows.slice(start,start+state.pageSize);
+        return view.length?view.map(function(x){return '<tr><td>'+escapeHtml(x.name)+'</td><td>'+escapeHtml(x.issue)+'</td><td>'+escapeHtml(x.detail)+'</td><td>'+escapeHtml(cvatCorrectionFor(x))+'</td></tr>';}).join(''):'<tr><td colspan="4">Nenhuma observação nesta categoria.</td></tr>';
+      }
+      function refreshCvatPagination(){
+        if(!cvatReviewState)return;
+        var state=cvatReviewState,counts=cvatCounts(state);
+        var filtered=state.findings.filter(function(x){return state.filter==='all'||cvatCategory(x.issue)===state.filter;});
+        var pages=Math.max(1,Math.ceil(filtered.length/state.pageSize));
+        state.page=Math.max(1,Math.min(state.page,pages));
+        var body=results.querySelector('[data-cvat-findings]');
+        if(body)body.innerHTML=cvatPageRows(state);
+        var label=results.querySelector('[data-cvat-page-label]');
+        if(label)label.textContent='Página '+state.page+' de '+pages+' · '+filtered.length+' observações';
+        var prev=results.querySelector('[data-cvat-prev]'),next=results.querySelector('[data-cvat-next]');
+        if(prev)prev.disabled=state.page<=1;if(next)next.disabled=state.page>=pages;
+      }
+
       function renderCvatReview(pecRows, teamValue, siapsRows) {
-        var headerAt=pecRows.findIndex(function(r){var x=r.map(normalize);return x.some(function(v){return v.indexOf('NOME')>=0;})&&(x.some(function(v){return v.indexOf('DATA DE NASCIMENTO')>=0;})||x.some(function(v){return v.indexOf('CPF')>=0;})||x.some(function(v){return v.indexOf('CNS')>=0;}));});
+        var headerAt=pecRows.findIndex(function(r){var x=r.map(normalize);return x.some(function(v){return v.indexOf('NOME')>=0||v==='PESSOA'||v==='CIDADAO'||v==='USUARIO';})&&(x.some(function(v){return v.indexOf('DATA DE NASCIMENTO')>=0;})||x.some(function(v){return v.indexOf('CPF')>=0;})||x.some(function(v){return v.indexOf('CNS')>=0;}));});
         if(headerAt<0)return '<div class="notice"><strong>Lista nominal CVAT:</strong> o arquivo do PEC não contém cabeçalho de pessoas com campos de identificação. Envie a exportação nominal de cadastro/território para conferir vínculo, atualização e duplicidades.</div>';
         var headers=pecRows[headerAt].map(normalize);
         function col(terms){return headers.findIndex(function(h){return terms.some(function(t){return h.indexOf(normalize(t))>=0;});});}
-        var nameIx=col(['NOME']); if(nameIx<0)return '<div class="notice">Não encontrei o campo de nome na lista nominal do PEC.</div>';
+        var nameIx=headers.findIndex(function(h){return h==='NOME DO CIDADAO'||h==='NOME DO USUARIO'||h==='NOME COMPLETO'||h==='NOME DA PESSOA'||h==='NOME CIDADAO'||h==='NOME USUARIO';});
+        if(nameIx<0)nameIx=headers.findIndex(function(h){return h==='NOME'||h==='PESSOA'||h==='CIDADAO'||h==='USUARIO';});
+        if(nameIx<0)nameIx=headers.findIndex(function(h){return h.indexOf('NOME')>=0&&!/EQUIPE|UNIDADE|UBS|PROFISSIONAL|ESTABELECIMENTO|RESPONSAVEL/.test(h);});
+        if(nameIx<0)return '<div class="notice">Não encontrei uma coluna de nome do cidadão no CSV nominal. A coluna de nome da equipe/UBS não será usada como nome de pessoa.</div>';
         var people=pecRows.slice(headerAt+1).filter(function(r){return String(r[nameIx]||'').trim()&&normalize(r[nameIx])!=='NOME'&&r.some(function(v){return String(v||'').trim();});});
         function value(p,terms){var i=col(terms);return i<0?'':String(p[i]||'').trim();}
         function digits(x){return String(x||'').replace(/\\D/g,'');}
@@ -679,10 +734,10 @@
         function add(p,issue,detail){findings.push({name:String(p[nameIx]||'').trim(),issue:issue,detail:detail});}
         people.forEach(function(p){
           var cpf=cpfIx>=0?String(p[cpfIx]||'').trim():'';
-          if(cpfIx>=0&&(!digits(cpf)||!validCpf(cpf)))add(p,'CPF ausente ou com dígitos inválidos',cpf?'Valor no arquivo: '+cpf:'Campo CPF vazio no CSV');
+          if(cpfIx>=0&&(!digits(cpf)||!validCpf(cpf)))add(p,'CPF ausente ou com dígitos inválidos',cpf?'CPF preenchido, mas a validação dos dígitos não confere':'CPF não informado no arquivo');
           var cns=cnsIx>=0?digits(p[cnsIx]):'';
-          if(cnsIx>=0&&cns&&(!/^7/.test(cns)||cns.length!==15))add(p,'CNS para conferência',cns.length!==15?'CNS com '+cns.length+' dígitos':!/^7/.test(cns)?'Possível CNS anterior (não iniciado por 7); confirmar o CNS principal no CadSUS':'Número CNS a validar no CadSUS');
-          if(cnsIx>=0&&!cns)add(p,'CNS ausente','Campo CNS vazio no CSV');
+          if(cnsIx>=0&&cns&&(!/^7/.test(cns)||cns.length!==15))add(p,'CNS para conferência',cns.length!==15?'Quantidade de dígitos do CNS fora do padrão; conferir no CadSUS':!/^7/.test(cns)?'Possível CNS anterior; confirmar o CNS principal no CadSUS':'Conferir CNS no CadSUS');
+          if(cnsIx>=0&&!cns)add(p,'CNS ausente','CNS não informado no arquivo');
           if(dobIx>=0&&!String(p[dobIx]||'').trim())add(p,'Data de nascimento ausente','Conferir identificação do cidadão no cadastro');
           if(phoneIx>=0&&!digits(p[phoneIx]))add(p,'Telefone celular ausente','O guia de cadastro do e-SUS APS indica o celular como dado obrigatório');
           if(motherIx>=0&&!String(p[motherIx]||'').trim())add(p,'Nome da mãe ausente','Conferir identificação cadastral e as validações do SIAPS');
@@ -696,25 +751,18 @@
         });
         var duplicateRows=[];
         Object.keys(dupGroups).forEach(function(k){var group=dupGroups[k];if(group.length>1){var kind=k.split(':')[0],names=group.map(function(p){return String(p[nameIx]||'').trim();});duplicateRows.push('<tr><td>'+escapeHtml(kind==='CPF'?'CPF repetido':kind==='CNS'?'CNS repetido':'Mesmo nome e nascimento')+'</td><td>'+escapeHtml(names.join(' · '))+'</td><td>Conferir os identificadores e regularizar o cadastro duplicado no PEC, se confirmado.</td><td><span class="status">Confirmar antes de corrigir</span></td></tr>');group.forEach(function(p){add(p,'Possível cadastro duplicado',kind==='CPF'?'CPF repetido na lista':kind==='CNS'?'CNS repetido na lista':'Nome e data de nascimento repetidos');});}});
-        function correctionFor(x){
-          var issue=normalize(x.issue);
-          if(issue.indexOf('CPF')>=0)return 'Conferir o documento e atualizar o CPF no cadastro individual; sincronizar/validar no CadSUS.';
-          if(issue.indexOf('CNS')>=0)return 'Consultar o CNS principal no CadSUS; corrigir o número no PEC após confirmação.';
-          if(issue.indexOf('DUPLICADO')>=0)return 'Conferir CPF/CNS e prontuário; confirmar se são a mesma pessoa e corrigir/regularizar duplicidade no PEC.';
-          if(issue.indexOf('VINCULO')>=0||issue.indexOf('UBS')>=0)return 'Conferir território e equipe responsável; vincular à UBS/equipe correta no cadastro individual.';
-          if(issue.indexOf('DOMICILIAR')>=0)return 'Atualizar o cadastro domiciliar e territorial, conferir domicílio, endereço, moradores e microárea.';
-          if(issue.indexOf('INDIVIDUAL')>=0||issue.indexOf('NASCIMENTO')>=0||issue.indexOf('MAE')>=0)return 'Revisar e atualizar os dados do cadastro individual no PEC.';
-          if(issue.indexOf('TELEFONE')>=0)return 'Confirmar com a pessoa e registrar telefone celular atualizado no cadastro.';
-          return 'Conferir o prontuário e corrigir o campo cadastral correspondente no PEC.';
-        }
-        var details=findings.map(function(x){return '<tr><td>'+escapeHtml(x.name)+'</td><td>'+escapeHtml(x.issue)+'</td><td>'+escapeHtml(x.detail)+'</td><td>'+escapeHtml(correctionFor(x))+'</td><td><span class="status">Conferir no PEC/CadSUS</span></td></tr>';}).join('');
+        cvatReviewState={findings:findings,filter:'all',page:1,pageSize:12};
+        var counts=cvatCounts(cvatReviewState);
+        var categories=[['all','Todas as observações'],['cpf','CPF ausente/inconsistente'],['cns','CNS para conferência'],['duplicate','Possíveis duplicidades'],['link','Vínculo UBS/equipe'],['stale','Cadastro desatualizado'],['missing','Outros dados faltantes']];
+        var options=categories.map(function(x){return '<option value="'+x[0]+'">'+escapeHtml(x[1])+' ('+counts[x[0]]+')</option>';}).join('');
+        var pages=Math.max(1,Math.ceil(findings.length/cvatReviewState.pageSize));
+        var pageLabel='Página 1 de '+pages+' · '+findings.length+' observações';
         var linkNote=linkIx<0?'<div class="notice"><strong>Vínculo nominal:</strong> este CSV não contém coluna de UBS/INE por pessoa. O relatório agregado identifica a equipe, mas não permite apontar quem está sem vínculo. Exporte uma lista nominal com equipe/unidade responsável.</div>':'';
         var fieldsNote=[cpfIx<0?'CPF':null,cnsIx<0?'CNS':null,dobIx<0?'data de nascimento':null,phoneIx<0?'telefone celular':null,motherIx<0?'nome da mãe':null,indDateIx<0?'data de atualização individual':null,homeDateIx<0?'data de atualização domiciliar/territorial':null,linkIx<0?'UBS/INE individual':null].filter(Boolean);
         var missingNote=fieldsNote.length?'<div class="notice"><strong>Colunas não incluídas no arquivo:</strong> '+escapeHtml(fieldsNote.join(', '))+'. Não é possível verificar esses itens com este CSV.</div>':'';
         return '<h3>Revisão nominal do CVAT</h3><div class="metrics"><div class="metric"><span>Pessoas lidas no PEC</span><strong>'+formatNumber(people.length)+'</strong></div><div class="metric"><span>Itens para conferência</span><strong>'+formatNumber(findings.length)+'</strong></div><div class="metric"><span>Possíveis grupos duplicados</span><strong>'+formatNumber(duplicateRows.length)+'</strong></div></div>'+
           linkNote+missingNote+'<div class="notice"><strong>Referência da atualização:</strong> '+escapeHtml(refDate.toLocaleDateString('pt-BR'))+'. A Nota Técnica considera cadastro individual e domiciliar atualizados separadamente dentro dos últimos 24 meses. Se a competência não pôde ser lida do CSV, foi usada a data atual do navegador.</div>'+
-          '<h3>Cadastros que precisam de conferência</h3><div class="table-wrap"><table><thead><tr><th>Pessoa</th><th>Verificação</th><th>Valor/observação do arquivo</th><th>Correção necessária</th><th>Status</th></tr></thead><tbody>'+(details||'<tr><td colspan="5">Nenhum problema nos campos detectáveis foi encontrado. Isso não substitui a validação oficial do SIAPS.</td></tr>')+'</tbody></table></div>'+
-          '<h3 style="margin-top:20px">Possíveis duplicidades</h3><div class="table-wrap"><table><thead><tr><th>Chave repetida</th><th>Registros identificados</th><th>Correção necessária</th><th>Status</th></tr></thead><tbody>'+(duplicateRows.join('')||'<tr><td colspan="4">Nenhuma duplicidade foi detectada pelos identificadores disponíveis.</td></tr>')+'</tbody></table></div>'+
+          '<h3>Observações por pessoa</h3><div class="cvat-pagination"><label for="cvat-observation-filter">Filtrar observação</label><select id="cvat-observation-filter" data-cvat-filter>'+options+'</select><button type="button" class="file-trigger" data-cvat-prev>Anterior</button><span data-cvat-page-label>'+pageLabel+'</span><button type="button" class="file-trigger" data-cvat-next>Próxima</button></div><div class="table-wrap"><table><thead><tr><th>Nome da pessoa</th><th>Inconsistência</th><th>Informação para conferência</th><th>Correção necessária</th></tr></thead><tbody data-cvat-findings>'+cvatPageRows(cvatReviewState)+'</tbody></table></div>'+
           '<div class="notice"><strong>Base oficial:</strong> o CVAT considera pessoa cadastrada quando o cadastro individual atende à validação do SIAPS; cadastro completo exige também cadastro domiciliar/territorial válido. Cadastro rápido não pontua. Esta leitura local é uma triagem, não substitui validação nacional nem confirmação manual da equipe.</div>';
       }
 
@@ -841,6 +889,7 @@
         if (pecName) pecName.textContent = 'Nenhum arquivo escolhido';
         loadedReports.siaps = '';
         loadedReports.pec = '';
+        cvatReviewState = null;
         Object.keys(resultsCache).forEach(function(key){ delete resultsCache[key]; });
         selectedIndicator = '';
         document.querySelectorAll('.indicator-choice').forEach(function(button){ button.classList.remove('active'); });
@@ -853,10 +902,14 @@
       window.clearAnalysis = clearAnalysis;
       document.addEventListener('click', function (event) {
         var target = event.target instanceof Element ? event.target : event.target && event.target.parentElement;
+        if(target&&target.closest('[data-cvat-prev]')&&cvatReviewState){event.preventDefault();cvatReviewState.page--;refreshCvatPagination();return;}
+        if(target&&target.closest('[data-cvat-next]')&&cvatReviewState){event.preventDefault();cvatReviewState.page++;refreshCvatPagination();return;}
         var resetButton = target && target.closest('[data-reset]');
-        if (resetButton) {
-          event.preventDefault();
-          clearAnalysis();
+        if (resetButton) { event.preventDefault(); clearAnalysis(); }
+      });
+      document.addEventListener('change',function(event){
+        if(event.target&&event.target.matches('[data-cvat-filter]')&&cvatReviewState){
+          cvatReviewState.filter=event.target.value;cvatReviewState.page=1;refreshCvatPagination();
         }
       });
     })();
