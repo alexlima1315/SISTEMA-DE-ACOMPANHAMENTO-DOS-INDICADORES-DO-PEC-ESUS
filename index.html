@@ -356,14 +356,15 @@
             <h3 style="margin-top:22px">2. Selecione cada relatório</h3>
             <p>Os botões identificam a origem e aceitam os arquivos em qualquer ordem.</p>
             <div class="file-pair">
-              <label class="file-trigger" for="siaps-input">Selecionar CSV do SIAPS</label>
-              <input id="siaps-input" type="file" accept=".csv,text/csv" aria-label="Selecionar arquivo CSV do SIAPS">
+              <label class="file-trigger" for="siaps-input">Selecionar CSV ou Excel do SIAPS</label>
+              <input id="siaps-input" type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" aria-label="Selecionar arquivo CSV ou Excel do SIAPS">
               <span id="siaps-file-name" class="file-name">Nenhum arquivo escolhido</span>
-              <label class="file-trigger" for="pec-input">Selecionar PDF do PEC (CVAT)</label>
-              <input id="pec-input" type="file" accept=".pdf,application/pdf,.csv,text/csv" aria-label="Selecionar PDF do PEC para CVAT ou CSV para outros indicadores">
+              <label class="file-trigger" for="pec-input">Selecionar relatório PDF do PEC</label>
+              <input id="pec-input" type="file" accept=".pdf,.csv,.xlsx,.xls,application/pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" aria-label="Selecionar relatório PDF, CSV ou Excel do PEC">
               <span id="pec-file-name" class="file-name">Nenhum arquivo escolhido</span>
             </div>
-            <div class="upload-hint">SIAPS: CSV. PEC: PDF do relatório “Acompanhamento de cidadãos vinculados” para CVAT; CSV nos demais indicadores. Leitura local — os arquivos não são enviados nem armazenados.</div></div>
+            <div class="upload-hint">SIAPS: CSV ou Excel. PEC: PDF, CSV ou Excel. A leitura é local neste navegador; nenhum arquivo é enviado ou armazenado.</div>
+            <div id="file-status" class="upload-hint" aria-live="polite"></div></div>
           </div>
           <div id="message" class="message" role="status" aria-live="polite"></div>
           <div id="results" class="results"></div>
@@ -854,34 +855,31 @@
       }
       var loadedReports = { siaps:'', pec:'' };
       var resultsCache = {};
-      var pdfjsPromise=null;
-      async function pecPdfToCsv(file) {
-        if(!pdfjsPromise)pdfjsPromise=import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs').then(function(pdfjs){
-          pdfjs.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
-          return pdfjs;
+      var pdfjsPromise=null,sheetjsPromise=null;
+      var loadedReportMeta={siaps:null,pec:null};
+      async function pecPdfToCsv(file){
+        if(!pdfjsPromise)pdfjsPromise=import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs').then(function(lib){
+          lib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';return lib;
         });
-        var pdfjs=await pdfjsPromise;
-        var pdf=await pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
+        var lib=await pdfjsPromise,pdf=await lib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
         if(pdf.numPages>500)throw new Error('O PDF tem mais de 500 páginas. Divida o relatório e tente novamente.');
-        var records=[],team='',ine='';
+        var records=[],team='',ine='',characters=0;
         function csvCell(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"';}
         function dateIn(v){var m=String(v||'').match(/\b\d{1,2}[\/-]\d{1,2}[\/-]\d{4}\b/);return m?m[0]:'';}
         for(var pageNo=1;pageNo<=pdf.numPages;pageNo++){
+          if(pageNo===1||pageNo%3===0||pageNo===pdf.numPages)setMessage('Lendo página '+pageNo+' de '+pdf.numPages+' do PDF do PEC…','info');
           var page=await pdf.getPage(pageNo),viewport=page.getViewport({scale:1}),content=await page.getTextContent(),lines=[];
           content.items.forEach(function(it){
-            var value=String(it.str||'').trim();if(!value)return;
-            var tr=pdfjs.Util.transform(viewport.transform,it.transform),x=tr[4],y=tr[5];
-            var line=lines.find(function(z){return Math.abs(z.y-y)<1.7;});
-            if(!line){line={y:y,items:[]};lines.push(line);}
-            line.items.push({x:x,text:value});
+            var value=String(it.str||'').trim();if(!value)return;characters+=value.length;
+            var a=viewport.transform,b=it.transform,x=a[0]*b[4]+a[2]*b[5]+a[4],y=a[1]*b[4]+a[3]*b[5]+a[5];
+            var line=lines.find(function(z){return Math.abs(z.y-y)<3.5;});
+            if(!line){line={y:y,items:[]};lines.push(line);}line.items.push({x:x,text:value});
           });
           lines.forEach(function(l){l.items.sort(function(a,b){return a.x-b.x;});l.text=l.items.map(function(x){return x.text;}).join(' ').replace(/\s+/g,' ').trim();});
           lines.sort(function(a,b){return a.y-b.y;});
-          var eqLine=lines.find(function(l){return /EQUIPE\s*:/i.test(l.text);});
-          if(!team&&eqLine){
-            var em=eqLine.text.match(/EQUIPE\s*:\s*(.+?)(?:\s*[|/]\s*(\d{7,10}))?$/i);
-            if(em){team=String(em[1]||'').trim();if(em[2])ine=em[2].replace(/^0+/,'');}
-            var im=eqLine.text.match(/\b\d{7,10}\b/);if(!ine&&im)ine=im[0].replace(/^0+/,'');
+          if(!team){
+            var eqLine=lines.find(function(l){return /EQUIPE\s*:/i.test(l.text);});
+            if(eqLine){var em=eqLine.text.match(/EQUIPE\s*:\s*(.+?)(?:\s*[|/]\s*(\d{7,10}))?$/i);if(em){team=String(em[1]||'').trim();if(em[2])ine=em[2].replace(/^0+/,'');}var im=eqLine.text.match(/\b\d{7,10}\b/);if(!ine&&im)ine=im[0].replace(/^0+/,'');}
           }
           var headerAt=lines.findIndex(function(l){var h=normalize(l.text);return h.indexOf('CIDADAO')>=0&&h.indexOf('SEXO')>=0&&h.indexOf('ATUALIZACAO')>=0;});
           if(headerAt<0)continue;
@@ -893,51 +891,68 @@
             if(l.y-lastStart>19){starts.push({y:l.y,name:left});lastStart=l.y;}
           });
           starts.forEach(function(start,index){
-            var end=index+1<starts.length?starts[index+1].y:viewport.height-38;
-            var band=lines.filter(function(l){return l.y>=start.y-1&&l.y<end-1;});
-            var cells={left:[],sex:[],age:[],dob:[],address:[],phone:[],updated:[]};
+            var endY=index+1<starts.length?starts[index+1].y:viewport.height-38;
+            var band=lines.filter(function(l){return l.y>=start.y-1&&l.y<endY-1;}),cells={left:[],sex:[],age:[],dob:[],address:[],phone:[],updated:[]};
             band.forEach(function(l){l.items.forEach(function(it){
-              if(it.x<190)cells.left.push(it.text);
-              else if(it.x<325)cells.sex.push(it.text);
-              else if(it.x<395)cells.age.push(it.text);
-              else if(it.x<460)cells.dob.push(it.text);
-              else if(it.x<680)cells.address.push(it.text);
-              else if(it.x<760)cells.phone.push(it.text);
-              else cells.updated.push(it.text);
+              if(it.x<190)cells.left.push(it.text);else if(it.x<325)cells.sex.push(it.text);else if(it.x<395)cells.age.push(it.text);else if(it.x<460)cells.dob.push(it.text);else if(it.x<680)cells.address.push(it.text);else if(it.x<760)cells.phone.push(it.text);else cells.updated.push(it.text);
             });});
             var leftText=cells.left.join(' ').replace(/\s+/g,' ').trim(),name=String(start.name||'').replace(/\s+(CPF|CNS)\s*[:\-].*$/i,'').trim();
-            var cpfMatch=leftText.match(/\bCPF\s*[:\-]?\s*([\d.\- ]{11,})/i),cnsMatch=leftText.match(/\bCNS\s*[:\-]?\s*([\d.\- ]{11,})/i);
-            var dob=dateIn(cells.dob.join(' ')),updated=dateIn(cells.updated.join(' '));
-            if(!name||!dob) return;
+            var cpfMatch=leftText.match(/\bCPF\s*[:\-]?\s*([\d.\- ]{11,})/i),cnsMatch=leftText.match(/\bCNS\s*[:\-]?\s*([\d.\- ]{11,})/i),dob=dateIn(cells.dob.join(' ')),updated=dateIn(cells.updated.join(' '));
+            if(!name||!dob)return;
             records.push([name,cpfMatch?cpfMatch[1].trim():'',cnsMatch?cnsMatch[1].trim():'',dob,cells.sex.join(' ').trim(),cells.age.join(' ').trim(),cells.address.join(' ').trim(),cells.phone.join(' ').trim(),updated]);
           });
         }
-        if(!records.length)throw new Error('Não consegui localizar as linhas de cidadãos neste PDF. Use o relatório “Acompanhamento de cidadãos vinculados” exportado em PDF com texto selecionável.');
-        var output=[['EQUIPE RESPONSAVEL',team],['INE DA EQUIPE',ine],['NOME DO CIDADAO','CPF','CNS','DATA DE NASCIMENTO','SEXO','IDADE','ENDERECO','TELEFONE CELULAR','ULTIMA ATUALIZACAO']].concat(records);
-        return output.map(function(row){return row.map(csvCell).join(',');}).join('\n');
+        if(characters<20)throw new Error('Este PDF parece ser uma imagem escaneada sem texto selecionável. Exporte o relatório diretamente em PDF pelo menu Relatórios do PEC e-SUS APS.');
+        if(!records.length)throw new Error('O PDF contém texto, mas não reconheci a tabela “Acompanhamento de cidadãos vinculados”. Confira o modelo do relatório ou envie CSV/Excel.');
+        var columns=['NOME DO CIDADAO','CPF','CNS','DATA DE NASCIMENTO','SEXO','IDADE','ENDERECO','TELEFONE CELULAR','ULTIMA ATUALIZACAO'];
+        var out=[['EQUIPE RESPONSAVEL',team],['INE DA EQUIPE',ine],columns].concat(records),text=out.map(function(row){return row.map(csvCell).join(',');}).join('\n');
+        return {text:text,pages:pdf.numPages,records:records.length,team:team,ine:ine,columns:columns,preview:records.slice(0,5).map(function(r){return {name:r[0],updated:r[8]};})};
       }
-      async function readReport(file, type) {
+      async function excelToCsv(file){
+        if(!sheetjsPromise)sheetjsPromise=import('https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs');
+        var XLSX=await sheetjsPromise,book=XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:false}),sheet=book.Sheets[book.SheetNames[0]];
+        if(!sheet)throw new Error('A planilha Excel não contém uma aba para leitura.');
+        return XLSX.utils.sheet_to_csv(sheet,{FS:',',blankrows:false});
+      }
+      function reportStats(text){
+        var rows=parseCsv(text),headerAt=rows.findIndex(function(r){return r.some(function(c){var h=normalize(c);return h.indexOf('NOME')>=0||h==='INE'||h.indexOf('COMPETENCIA')>=0;});});
+        var valid=headerAt>=0?rows.slice(headerAt+1).filter(function(r){return r.some(function(c){return String(c||'').trim();});}):rows.filter(function(r){return r.some(function(c){return String(c||'').trim();});});
+        return {rows:valid.length,columns:headerAt>=0?rows[headerAt].filter(Boolean):((rows[0]||[]).filter(Boolean))};
+      }
+      function renderSingleFile(type,text){
+        var rows=parseCsv(text),meta=loadedReportMeta[type]||{},stats=reportStats(text),isCvat=selectedIndicator==='CVAT';
+        if(type==='siaps'&&selectedIndicator==='C3'){renderC3(rows,contextOf(rows));return;}
+        if(isCvat){if(type==='siaps')renderCvatPair(text,'');else renderCvatPair('',text);return;}
+        var label=selectedIndicator||'Selecione um indicador';results.innerHTML='<div class="result-context">'+chip('Indicador',label)+chip('Arquivo lido',type==='siaps'?'SIAPS':'PEC')+'</div><div class="metrics"><div class="metric"><span>Registros localizados</span><strong>'+formatNumber(meta.records||stats.rows)+'</strong><span>no arquivo selecionado</span></div><div class="metric"><span>Colunas reconhecidas</span><strong>'+formatNumber((meta.columns||stats.columns).length)+'</strong><span>sem exibir identificadores</span></div><div class="metric"><span>Tipo de arquivo</span><strong>'+escapeHtml(meta.pages?'PDF · '+meta.pages+' páginas':type==='siaps'?'SIAPS':'PEC')+'</strong><span>processamento local</span></div></div>'+renderMethodCard(selectedIndicator)+'<div class="notice"><strong>Resultado parcial:</strong> este relatório foi lido sozinho. Envie o outro arquivo para cruzar equipe, competência e registros nominais; não calcularei uma pontuação oficial sem os campos correspondentes.</div>'+((type==='pec'&&selectedIndicator)?renderNominalReview(selectedIndicator,rows[meta.headerAt||0]?rows[meta.headerAt||0].map(normalize):null,rows.slice((meta.headerAt||0)+1)): '')+'<div class="reset-row"><button class="text-button" type="button" data-reset>Limpar análise</button></div>';
+        results.style.display='block';resultsCache[selectedIndicator||'import']=results.innerHTML;setMessage('Arquivo lido. '+stats.rows+' registros e '+stats.columns.length+' colunas reconhecidos.','info');
+      }
+      var loadedReports={siaps:'',pec:''},resultsCache=resultsCache||{};
+      function updateFileStatus(type,file,text,meta){
+        var box=document.getElementById('file-status');if(!box)return;
+        var stats=reportStats(text),who=type==='siaps'?'SIAPS':'PEC';
+        var cols=(meta&&meta.columns)||stats.columns;
+        box.innerHTML='<strong>'+who+':</strong> '+escapeHtml(file.name)+' · '+formatNumber((meta&&meta.records)||stats.rows)+' registros · '+formatNumber(cols.length)+' colunas'+(meta&&meta.pages?' · '+meta.pages+' páginas extraídas':'')+(meta&&meta.team?' · '+escapeHtml(meta.team):'')+(meta&&meta.ine?' · INE '+escapeHtml(meta.ine):'');
+      }
+      async function readReport(file,type){
         if(!file)return;
-        var isPdf=type==='pec'&&(/\.pdf$/i.test(file.name)||file.type==='application/pdf');
-        if(type==='siaps'&&(!/\.csv$/i.test(file.name)&&file.type!=='text/csv')){setMessage('O relatório do SIAPS deve ser enviado em CSV.','error');return;}
-        if(type==='pec'&&!isPdf&&!/\.csv$/i.test(file.name)&&file.type!=='text/csv'){setMessage('Para o CVAT, selecione o PDF “Acompanhamento de cidadãos vinculados”; para outros indicadores, selecione o CSV do PEC.','error');return;}
-        if(isPdf&&selectedIndicator!=='CVAT'){setMessage('Este modelo PDF do PEC é compatível com CVAT. Para os outros indicadores, selecione o CSV nominal correspondente.','error');return;}
+        var ext=(file.name.split('.').pop()||'').toLowerCase(),isPdf=ext==='pdf',isExcel=ext==='xlsx'||ext==='xls';
+        if(type==='siaps'&&!(ext==='csv'||isExcel)){setMessage('O arquivo do SIAPS deve ser CSV ou Excel (.xlsx/.xls).','error');return;}
+        if(type==='pec'&&!(isPdf||ext==='csv'||isExcel)){setMessage('O arquivo do PEC deve ser PDF, CSV ou Excel.','error');return;}
         try{
-          var decoded;
-          if(isPdf){setMessage('Lendo o PDF do PEC localmente neste navegador…','info');decoded=await pecPdfToCsv(file);}
-          else{
-            var buffer=await file.arrayBuffer();
-            try{decoded=new TextDecoder('utf-8',{fatal:true}).decode(buffer);}catch(e){decoded=new TextDecoder('windows-1252').decode(buffer);}
-          }
-          loadedReports[type]=decoded;
-          document.getElementById(type+'-file-name').textContent=file.name;
-          results.style.display='none';results.innerHTML='';
-          if(!loadedReports.siaps||!loadedReports.pec){setMessage('Arquivo '+(type==='siaps'?'SIAPS':'PEC')+' selecionado. Selecione o outro relatório para iniciar a análise.','info');return;}
-          if(!selectedIndicator)throw new Error('Escolha o indicador antes de analisar os relatórios.');
-          if(selectedIndicator==='C3')renderC3Pair(loadedReports.siaps,loadedReports.pec);
-          else if(selectedIndicator==='CVAT')renderCvatPair(loadedReports.siaps,loadedReports.pec);
-          else renderGenericPair(loadedReports.siaps,loadedReports.pec,selectedIndicator);
-        }catch(e){results.style.display='none';results.innerHTML='';setMessage(e.message||'Não foi possível ler os arquivos.','error');}
+          setMessage('Lendo '+(type==='siaps'?'SIAPS':'PEC')+' localmente…','info');
+          var decoded,meta=null;
+          if(isPdf){meta=await pecPdfToCsv(file);decoded=meta.text;}
+          else if(isExcel)decoded=await excelToCsv(file);
+          else{var buffer=await file.arrayBuffer();try{decoded=new TextDecoder('utf-8',{fatal:true}).decode(buffer);}catch(e){decoded=new TextDecoder('windows-1252').decode(buffer);}}
+          loadedReports[type]=decoded;loadedReportMeta[type]=meta;
+          document.getElementById(type+'-file-name').textContent=file.name;updateFileStatus(type,file,decoded,meta);
+          if(!selectedIndicator){renderSingleFile(type,decoded);return;}
+          if(loadedReports.siaps&&loadedReports.pec){
+            if(selectedIndicator==='C3')renderC3Pair(loadedReports.siaps,loadedReports.pec);
+            else if(selectedIndicator==='CVAT')renderCvatPair(loadedReports.siaps,loadedReports.pec);
+            else renderGenericPair(loadedReports.siaps,loadedReports.pec,selectedIndicator);
+          }else renderSingleFile(type,decoded);
+        }catch(e){results.style.display='block';results.innerHTML='<div class="notice">'+escapeHtml(e.message||'Não foi possível ler os arquivos.')+'</div>';setMessage(e.message||'Não foi possível ler os arquivos.','error');}
       }
       function openIndicatorFromCatalog(card) {
         var code=card.getAttribute('data-indicator');
@@ -981,6 +996,8 @@
         if (pecName) pecName.textContent = 'Nenhum arquivo escolhido';
         loadedReports.siaps = '';
         loadedReports.pec = '';
+        loadedReportMeta.siaps = null;loadedReportMeta.pec = null;
+        var statusBox=document.getElementById('file-status');if(statusBox)statusBox.textContent='';
         cvatReviewState = null;
         Object.keys(resultsCache).forEach(function(key){ delete resultsCache[key]; });
         selectedIndicator = '';
