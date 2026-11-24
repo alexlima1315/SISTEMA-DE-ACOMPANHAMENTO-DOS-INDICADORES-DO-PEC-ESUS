@@ -545,6 +545,7 @@
         renderCvatCompetencePair(sr,pr,context,teamRef);
       }
       function renderCvatCompetencePair(sr,pr,context,teamRef) {
+        var pecTeam=valueFor(pr,function(x){return x.indexOf('EQUIPE RESPONSAVEL')===0||x.indexOf('EQUIPE:')===0;});
         var headerAt=sr.findIndex(function(r){
           var h=r.map(normalize);
           return h.some(function(x){return x==='INE'||x.indexOf('NU INE')>=0||x.indexOf('CODIGO INE')>=0;})&&
